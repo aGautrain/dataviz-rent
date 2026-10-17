@@ -6,12 +6,17 @@ taking 6 minutes.
 Walking end to end takes well over an hour, so a short travel time proves the
 transit leg was used.
 
+A second line, C to D along the northern edge, comes from a feed whose
+timetable ended two days ago, like STAR's rolling week. It only runs on the
+next working day if MOTIS's extend_calendar repeats its weekly pattern.
+
     python3 routing/test/make_fixture.py OUT_DIR
     osmium cat OUT_DIR/town.osm -o OUT_DIR/town.osm.pbf
 """
 
 import sys
 import zipfile
+from datetime import date, timedelta
 from pathlib import Path
 
 LAT = 48.0
@@ -49,25 +54,32 @@ def osm_xml() -> str:
     return "\n".join(lines)
 
 
-def gtfs_files() -> dict[str, str]:
+def gtfs_files(
+    route: str, stops: tuple[tuple[str, float, float], tuple[str, float, float]], start: date, end: date
+) -> dict[str, str]:
+    """One metro line between two stops, every 10 minutes from 5:00 to 23:00,
+    every day from start to end."""
+    (first, *_), (last, *_) = stops
     trips, stop_times = ["route_id,service_id,trip_id"], [
         "trip_id,arrival_time,departure_time,stop_id,stop_sequence"
     ]
     for index, minute in enumerate(range(5 * 60, 23 * 60, 10)):
         trip = f"t{index}"
-        trips.append(f"m1,daily,{trip}")
-        start = f"{minute // 60:02d}:{minute % 60:02d}:00"
-        end = f"{(minute + 6) // 60:02d}:{(minute + 6) % 60:02d}:00"
-        stop_times.append(f"{trip},{start},{start},A,1")
-        stop_times.append(f"{trip},{end},{end},B,2")
+        trips.append(f"{route},daily,{trip}")
+        leave = f"{minute // 60:02d}:{minute % 60:02d}:00"
+        arrive = f"{(minute + 6) // 60:02d}:{(minute + 6) % 60:02d}:00"
+        stop_times.append(f"{trip},{leave},{leave},{first},1")
+        stop_times.append(f"{trip},{arrive},{arrive},{last},2")
     return {
         "agency.txt": "agency_id,agency_name,agency_url,agency_timezone\n"
         "fx,Fixture Transit,https://example.com,Europe/Paris\n",
         "stops.txt": "stop_id,stop_name,stop_lat,stop_lon\n"
-        f"A,Ouest,{LAT},2.002\nB,Est,{LAT},2.098\n",
-        "routes.txt": "route_id,agency_id,route_short_name,route_type\nm1,fx,M1,1\n",
+        + "".join(f"{stop},{stop},{lat},{lng}\n" for stop, lat, lng in stops),
+        "routes.txt": f"route_id,agency_id,route_short_name,route_type\n{route},fx,{route},1\n",
         "calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
-        "start_date,end_date\ndaily,1,1,1,1,1,1,1,20200101,20991231\n",
+        f"start_date,end_date\ndaily,1,1,1,1,1,1,1,{start:%Y%m%d},{end:%Y%m%d}\n",
+        "feed_info.txt": "feed_publisher_name,feed_publisher_url,feed_lang,feed_end_date\n"
+        f"Fixture,https://example.com,fr,{end:%Y%m%d}\n",
         "trips.txt": "\n".join(trips) + "\n",
         "stop_times.txt": "\n".join(stop_times) + "\n",
     }
@@ -81,6 +93,9 @@ timetable:
   datasets:
     fx:
       path: town.gtfs.zip
+    short:
+      path: short.gtfs.zip
+      extend_calendar: true
 limits:
   onetomany_max_many: 1000
 """
@@ -89,9 +104,20 @@ limits:
 def main(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     (out / "town.osm").write_text(osm_xml())
-    with zipfile.ZipFile(out / "town.gtfs.zip", "w") as archive:
-        for name, content in gtfs_files().items():
-            archive.writestr(name, content)
+    today = date.today()
+    feeds = {
+        "town": gtfs_files("M1", (("A", LAT, 2.002), ("B", LAT, 2.098)), date(2020, 1, 1), date(2099, 12, 31)),
+        "short": gtfs_files(
+            "M2",
+            (("C", NORTH, 2.002), ("D", NORTH, 2.098)),
+            today - timedelta(days=9),
+            today - timedelta(days=2),
+        ),
+    }
+    for feed, files in feeds.items():
+        with zipfile.ZipFile(out / f"{feed}.gtfs.zip", "w") as archive:
+            for name, content in files.items():
+                archive.writestr(name, content)
     (out / "config.yml").write_text(CONFIG)
 
 

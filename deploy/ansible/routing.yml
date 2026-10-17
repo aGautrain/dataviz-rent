@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# routing.yml — builds the travel-time data (MOTIS) and installs its weekly
+# routing.yml — builds the travel-time data (MOTIS) and installs its nightly
 # refresh. Run deploy.yml first, with COMPOSE_PROFILES=routing and
 # MOTIS_URL=http://routing:8080 in production.env.
 #
@@ -62,10 +62,22 @@
       poll: 30
       changed_when: true
 
-    - name: Refresh the timetables every Sunday night
+    - name: Install cron (missing from minimal Debian images)
+      ansible.builtin.apt:
+        name: cron
+        state: present
+
+    - name: Start cron now and at boot
+      ansible.builtin.service:
+        name: cron
+        state: started
+        enabled: true
+
+    # Nightly, because the Rennes timetables (STAR) only cover about a week.
+    # The streets are only rebuilt once a week (prepare.sh), so this is short.
+    - name: Refresh the timetables every night
       ansible.builtin.cron:
         name: "{{ project_name }} routing refresh"
-        weekday: "0"
         hour: "3"
         minute: "17"
         job: "cd {{ app_dir }} && sh routing/refresh.sh > /var/log/{{ project_name }}-routing.log 2>&1"

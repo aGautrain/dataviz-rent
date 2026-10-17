@@ -9,7 +9,7 @@ osm: region.osm.pbf
 street_routing: true
 timetable:
   first_day: TODAY
-  # Memory grows with the days loaded. The weekly refresh reloads them, and
+  # Memory grows with the days loaded. The nightly refresh reloads them, and
   # searches always ask for the next working day.
   num_days: 10
   railviz: false
@@ -19,6 +19,10 @@ timetable:
       path: idfm.gtfs.zip
     star:
       path: star.gtfs.zip
+      # STAR only publishes about a week ahead: repeat its weekly pattern past
+      # the end of the feed. When the next version is out, prepare.sh adds it
+      # here, above these lines, so it is the one that gets extended.
+      extend_calendar: true
     london:
       path: london.gtfs.zip
 limits:

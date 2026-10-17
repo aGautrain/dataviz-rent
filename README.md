@@ -107,7 +107,8 @@ Le tout est dimensionné pour le petit VPS actuel (2 vCPU, 1,8 Go de RAM) :
 - dix jours d'horaires et un seul thread de calcul ;
 - MOTIS plafonné à 700 Mo de RAM et un cœur : au-delà il utilise le swap, ce qui ralentit les
   réponses (plusieurs secondes, jusqu'à une minute) sans prendre de mémoire aux autres projets ;
-- l'import hebdomadaire tourne la nuit, surtout dans le swap (8 Go, créé par `routing.yml`) ;
+- l'import tourne chaque nuit, surtout dans le swap (8 Go, créé par `routing.yml`) ; les rues ne
+  sont retéléchargées qu'une fois par semaine, ce qui le raccourcit les autres nuits ;
 - l'appli garde en mémoire les temps déjà calculés par adresse : changer un filtre de loyer ou de
   surface ne relance pas le calcul.
 
@@ -116,9 +117,10 @@ Pour l'activer :
 
 1. Dans `production.env`, décommenter `COMPOSE_PROFILES=routing` et `MOTIS_URL=http://routing:8080`.
 2. `ansible-playbook deploy.yml`, puis `ansible-playbook routing.yml`. Le premier import prend
-   une heure ou plus. Le playbook ajoute le swap s'il n'y en a pas et installe un rafraîchissement
-   hebdomadaire des horaires (dimanche, 3 h 17), pendant lequel les temps de trajet sont
-   indisponibles.
+   une heure ou plus. Le playbook ajoute le swap s'il n'y en a pas et installe cron et un rafraîchissement
+   des horaires chaque nuit (3 h 17), pendant lequel les temps de trajet sont indisponibles
+   quelques minutes. Il est quotidien parce que le STAR ne publie qu'une semaine d'horaires à
+   l'avance (plus la version suivante quand elle est annoncée, que `prepare.sh` charge aussi).
 
 Sans MOTIS, la recherche fonctionne et signale que les temps de trajet sont indisponibles. Le
 code passe par l'interface `TravelTimeEngine` (`src/routing/`), ce qui permet de changer de

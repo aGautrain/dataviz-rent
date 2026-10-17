@@ -29,4 +29,16 @@ describe.skipIf(!url)("MOTIS on the fixture network", () => {
     expect(onFoot!).toBeLessThanOrEqual(8);
     expect(nowhere).toBeNull();
   });
+
+  // The M2 feed ended two days ago (see make_fixture.py), like STAR's rolling week.
+  it("repeats the weekly pattern of a feed that has ended", async () => {
+    const [nearC] = await engine.travelTimes(
+      [{ lat: 48.01, lng: 2.003 }],
+      { lat: 48.01, lng: 2.097 },
+      arriveBy,
+    );
+    // Through M1 instead, a kilometre south, it takes 25 minutes or more.
+    expect(nearC).not.toBeNull();
+    expect(nearC!).toBeLessThanOrEqual(18);
+  });
 });
