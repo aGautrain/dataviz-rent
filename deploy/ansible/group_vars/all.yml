@@ -1,0 +1,29 @@
+---
+# ── Shared variables for every playbook ──────────────────────────────────────
+
+# Short name used for the install dir, the nginx site file and the cert. Every
+# project on the VPS needs its own, so they never overwrite each other's files.
+project_name: dataviz-rent
+
+# Where the app is installed on the server.
+app_dir: "/opt/{{ project_name }}"
+
+# Local project root (two levels above this folder) rsynced to the server.
+project_src: "{{ playbook_dir }}/../.."
+
+# Production secrets, kept next to the playbooks and out of git (see
+# production.env.example). Copied to {{ app_dir }}/.env with mode 0600.
+env_file: "{{ playbook_dir }}/production.env"
+
+# ── nginx reverse proxy + Let's Encrypt (webproxy.yml) ───────────────────────
+# Public domain pointed (A/AAAA record) at the VPS. Set it before the first run.
+domain: CHANGE-ME.example.com
+letsencrypt_email: antoine.gautrain@gmail.com
+
+# Loopback port the app container is published on. Must match APP_PORT in
+# production.env and differ from every other project on the VPS:
+#   ratelflix-transcriptions  8787
+#   dataviz-rent              3100
+app_port: 3100
+proxy_timeout: 60s
+proxy_connect_timeout: 10s

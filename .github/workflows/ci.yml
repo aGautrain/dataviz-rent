@@ -31,3 +31,21 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Builds the production images and runs the stack the way the VPS does.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write a throwaway production env
+        run: printf 'APP_PORT=3100\nPOSTGRES_PASSWORD=ci\nBETA_USERS=ci:ci\n' > .env
+      - run: docker compose up -d --build --wait app
+      - name: Health check on the loopback port
+        run: curl -fsS --retry 15 --retry-connrefused --retry-all-errors --retry-delay 2 http://127.0.0.1:3100/api/health
+      - name: Pages require tester credentials
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -u ci:ci http://127.0.0.1:3100/)" = 200
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
