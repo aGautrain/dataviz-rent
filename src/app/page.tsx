@@ -58,7 +58,6 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
     db: getDb(),
     geocode,
     engine: getTravelTimeEngine(),
-    now: () => new Date(),
     log: console.error,
   });
   const showMinutes = outcome.destination !== null && outcome.commuteProblem === null;
@@ -101,7 +100,7 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
           {showMinutes && (
             <>
               Trajets en transports vers <strong>{outcome.destination!.label}</strong>, pour une
-              arrivée à 9 h un jour de semaine.{" "}
+              arrivée à 9 h un jour de semaine ordinaire.{" "}
             </>
           )}
           {summary(outcome)}

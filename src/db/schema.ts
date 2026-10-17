@@ -1,11 +1,14 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   geometry,
   index,
   integer,
   pgTable,
+  primaryKey,
   real,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -52,3 +55,42 @@ export const listings = pgTable(
 
 export type ListingRow = typeof listings.$inferSelect;
 export type NewListingRow = typeof listings.$inferInsert;
+
+/**
+ * Answers from the address geocoders (BAN, Nominatim), so each address is
+ * only asked once. A row without a label is an address they did not find.
+ */
+export const geocodeCache = pgTable(
+  "geocode_cache",
+  {
+    cityId: varchar("city_id", { length: 32 }).notNull(),
+    /** The address as typed, trimmed and lower-cased. */
+    query: text("query").notNull(),
+    label: text("label"),
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.cityId, table.query] })],
+);
+
+/**
+ * Travel times computed by MOTIS. The timetables are pinned to one day, so a
+ * time never goes stale: each listing position is routed once per address.
+ * Positions are rounded to ~10 m (src/routing/cache.ts).
+ */
+export const travelTimeCache = pgTable(
+  "travel_time_cache",
+  {
+    arriveBy: timestamp("arrive_by", { withTimezone: true }).notNull(),
+    destination: varchar("destination", { length: 24 }).notNull(),
+    origin: varchar("origin", { length: 24 }).notNull(),
+    /** Null: no route within the engine's limit. */
+    minutes: smallint("minutes"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.arriveBy, table.destination, table.origin] }),
+  ],
+);

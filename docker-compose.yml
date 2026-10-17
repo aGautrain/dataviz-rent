@@ -92,8 +92,8 @@ services:
       - routing-input:/input:ro
       - routing-data:/data
     # The import peaks well above the server's RAM: it runs mostly in swap, on
-    # one core, at night (see refresh.sh). Slow, but the other projects keep
-    # their memory and CPU.
+    # one core (see refresh.sh). Slow, but the other projects keep their
+    # memory and CPU.
     mem_limit: ${ROUTING_IMPORT_MEM_LIMIT:-800m}
     memswap_limit: ${ROUTING_IMPORT_MEMSWAP_LIMIT:-7g}
     cpus: 1

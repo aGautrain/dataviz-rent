@@ -1,5 +1,8 @@
+import { createGeocodeStore } from "@/db/caches";
+import { getDb } from "@/db/client";
 import type { CityConfig, CountryCode } from "@/domain/countries";
 import { createBanGeocoder } from "./ban";
+import { withGeocodeCache } from "./cache";
 import { createNominatimGeocoder } from "./nominatim";
 import type { Geocoder, Place } from "./types";
 
@@ -8,17 +11,14 @@ const GEOCODERS: Record<CountryCode, Geocoder> = {
   GB: createNominatimGeocoder(),
 };
 
-const CACHE_SIZE = 500;
-const cache = new Map<string, Place | null>();
+let cached: ((query: string, city: CityConfig) => Promise<Place | null>) | undefined;
 
-/** Geocodes with the city's national geocoder, remembering recent answers. */
-export async function geocode(query: string, city: CityConfig): Promise<Place | null> {
-  const key = `${city.id}|${query.trim().toLowerCase()}`;
-  if (cache.has(key)) return cache.get(key)!;
-  const place = await GEOCODERS[city.country].geocode(query.trim(), city);
-  if (cache.size >= CACHE_SIZE) cache.delete(cache.keys().next().value!);
-  cache.set(key, place);
-  return place;
+/** Geocodes with the city's national geocoder, asking it once per address. */
+export function geocode(query: string, city: CityConfig): Promise<Place | null> {
+  cached ??= withGeocodeCache((text, near) => GEOCODERS[near.country].geocode(text, near), {
+    store: createGeocodeStore(getDb()),
+  });
+  return cached(query, city);
 }
 
 export type { Place } from "./types";

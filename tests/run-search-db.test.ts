@@ -51,7 +51,6 @@ describe.skipIf(!url)("runSearch", () => {
     db,
     geocode: async () => station,
     engine,
-    now: () => new Date("2026-10-17T10:00:00Z"),
     ...overrides,
   });
 

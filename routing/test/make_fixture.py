@@ -10,6 +10,7 @@ transit leg was used.
     osmium cat OUT_DIR/town.osm -o OUT_DIR/town.osm.pbf
 """
 
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -73,11 +74,14 @@ def gtfs_files() -> dict[str, str]:
     }
 
 
-CONFIG = """osm: town.osm.pbf
+# The same day as production, which the app always asks for.
+DAY = re.search(r'^  first_day: "(.+)"$', (Path(__file__).parents[1] / "config.yml").read_text(), re.M)[1]
+
+CONFIG = f"""osm: town.osm.pbf
 street_routing: true
 timetable:
-  first_day: TODAY
-  num_days: 14
+  first_day: "{DAY}"
+  num_days: 1
   datasets:
     fx:
       path: town.gtfs.zip

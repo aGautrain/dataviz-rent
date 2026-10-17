@@ -98,27 +98,39 @@ Les temps de trajet porte à porte viennent de [MOTIS](https://github.com/motis-
 auto-hébergé dans le même `docker compose` (service `routing`, désactivé par défaut). Il charge les
 rues d'OpenStreetMap et les horaires GTFS d'Île-de-France Mobilités, du STAR et de Londres (Bus Open
 Data Service : bus, métro, DLR, tram). L'appli lui demande en une requête le temps de trajet de
-chaque annonce vers l'adresse saisie, pour une arrivée à 9 h le prochain jour ouvré. Les adresses
+chaque annonce vers l'adresse saisie, pour une arrivée à 9 h un jour de semaine ordinaire fixé une fois
+pour toutes : le jeudi 15 octobre 2026 en France et le lundi 19 octobre 2026 à Londres, dont le
+fichier d'horaires commence plus tard (`TIMETABLE_DAYS` dans `src/routing/arrival.ts`, recopié dans
+`routing/prepare.sh` ; `routing/config.yml` charge du 15 au 19). Les horaires sont téléchargés et
+importés une seule fois et ne périment pas : il n'y a rien à rafraîchir. Les adresses
 sont géocodées par la Base Adresse Nationale (France) et Nominatim (Royaume-Uni).
 
 Le tout est dimensionné pour le petit VPS actuel (2 vCPU, 1,8 Go de RAM) :
 
 - zones de carte serrées (Paris et petite couronne, Rennes Métropole, Grand Londres) ;
-- dix jours d'horaires et un seul thread de calcul ;
+- cinq jours d'horaires et un seul thread de calcul ;
 - MOTIS plafonné à 700 Mo de RAM et un cœur : au-delà il utilise le swap, ce qui ralentit les
   réponses (plusieurs secondes, jusqu'à une minute) sans prendre de mémoire aux autres projets ;
-- l'import hebdomadaire tourne la nuit, surtout dans le swap (8 Go, créé par `routing.yml`) ;
-- l'appli garde en mémoire les temps déjà calculés par adresse : changer un filtre de loyer ou de
-  surface ne relance pas le calcul.
+- l'import tourne surtout dans le swap (8 Go, créé par `routing.yml`) ;
+- les temps calculés sont gardés en base (`travel_time_cache`) : chaque annonce n'est calculée
+  qu'une fois par adresse, même après un redémarrage, et changer un filtre de loyer ou de surface
+  ne relance pas le calcul. Les réponses des géocodeurs sont gardées de même (`geocode_cache`),
+  pour ne demander chaque adresse qu'une fois à la BAN et à Nominatim.
 
 Sur un serveur plus gros, il suffit de relever les limites `ROUTING_*` dans `production.env`.
 Pour l'activer :
 
 1. Dans `production.env`, décommenter `COMPOSE_PROFILES=routing` et `MOTIS_URL=http://routing:8080`.
-2. `ansible-playbook deploy.yml`, puis `ansible-playbook routing.yml`. Le premier import prend
-   une heure ou plus. Le playbook ajoute le swap s'il n'y en a pas et installe un rafraîchissement
-   hebdomadaire des horaires (dimanche, 3 h 17), pendant lequel les temps de trajet sont
-   indisponibles.
+2. `ansible-playbook deploy.yml`, puis `ansible-playbook routing.yml`, qui ajoute le swap s'il n'y
+   en a pas, télécharge les fichiers manquants et importe le tout. `prepare.sh` vérifie que
+   chaque fichier d'horaires couvre son jour. Un fichier déjà présent n'est jamais supprimé ni
+   retéléchargé.
+
+Les jours fixés sont passés et les flux publiés ne couvrent que les jours à venir : **le volume
+`routing-input` ne se recrée pas**, il faut le garder (ou le sauvegarder). Changer de jour :
+modifier `TIMETABLE_DAYS`, `prepare.sh` et `routing/config.yml` (un test vérifie qu'ils
+concordent), vider le volume `routing-input` et relancer `routing.yml`. Les temps déjà en base
+pour l'ancien jour ne sont plus lus.
 
 Sans MOTIS, la recherche fonctionne et signale que les temps de trajet sont indisponibles. Le
 code passe par l'interface `TravelTimeEngine` (`src/routing/`), ce qui permet de changer de

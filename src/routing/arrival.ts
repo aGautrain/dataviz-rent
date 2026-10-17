@@ -1,3 +1,5 @@
+import type { CityConfig, CountryCode } from "@/domain/countries";
+
 /** Offset of `timeZone` from UTC at `instant`, in milliseconds. */
 function zoneOffset(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -16,18 +18,27 @@ function zoneOffset(instant: number, timeZone: string): number {
 }
 
 /**
- * The commute travel times are computed for: arriving at `hour` local time on
- * the next working day (Monday to Friday) strictly after `now`.
+ * The day travel times are computed for, per country: an ordinary weekday
+ * outside school and public holidays. MOTIS loads only these days' timetables
+ * (`first_day` and `num_days` in routing/config.yml, checked by a test), from
+ * files downloaded once and kept, so the data never goes stale and needs no
+ * refresh. London's feed starts later than the French ones, hence its own day.
  */
-export function nextWorkdayArrival(now: Date, timeZone: string, hour = 9): Date {
-  const local = new Date(now.getTime() + zoneOffset(now.getTime(), timeZone));
-  for (let days = 1; days <= 7; days++) {
-    const day = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + days, hour));
-    const weekday = day.getUTCDay();
-    if (weekday === 0 || weekday === 6) continue;
-    // `day` is the wall-clock time; shift it by the zone's offset at that moment.
-    const guess = day.getTime() - zoneOffset(day.getTime(), timeZone);
-    return new Date(day.getTime() - zoneOffset(guess, timeZone));
-  }
-  throw new Error("unreachable: a week always has a working day");
+export const TIMETABLE_DAYS: Record<CountryCode, string> = {
+  FR: "2026-10-15",
+  GB: "2026-10-19",
+};
+
+/** Arriving at `hour` local time in `timeZone` on `day` (YYYY-MM-DD). */
+export function arrivalOn(day: string, timeZone: string, hour = 9): Date {
+  const [year, month, date] = day.split("-").map(Number);
+  // The wall-clock time, shifted by the zone's offset at that moment.
+  const wall = Date.UTC(year, month - 1, date, hour);
+  const guess = wall - zoneOffset(wall, timeZone);
+  return new Date(wall - zoneOffset(guess, timeZone));
+}
+
+/** The arrival every commute in this city is computed for: 9 am on its country's day. */
+export function timetableArrival(city: Pick<CityConfig, "country" | "timeZone">): Date {
+  return arrivalOn(TIMETABLE_DAYS[city.country], city.timeZone);
 }
