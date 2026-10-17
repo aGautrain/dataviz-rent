@@ -57,7 +57,8 @@ function searchUrl(criteria: SearchCriteria, page?: number): string {
 
 /** Search data lives in the page's Next.js payload (its Redux state). */
 export function parseSearchPage(html: string): SearchResults {
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  // The tag carries other attributes too (type, crossorigin), in any order.
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!match) throw new Error("OnTheMarket page has no __NEXT_DATA__ payload");
   const data = JSON.parse(match[1]) as {
     props?: { pageProps?: { initialReduxState?: { results?: SearchResults } } };

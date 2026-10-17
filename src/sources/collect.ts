@@ -97,7 +97,7 @@ export async function collectAll(
   const results: CollectionResult[] = [];
   for (const target of targets) {
     for (const adapter of adapters) {
-      if (!adapter.cities.includes(target.criteria.cityId)) continue;
+      if (adapter.collect === false || !adapter.cities.includes(target.criteria.cityId)) continue;
       results.push(await collectFrom(db, adapter, target, context));
     }
   }

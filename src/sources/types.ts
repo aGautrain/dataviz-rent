@@ -23,6 +23,11 @@ export interface SourceAdapter<Raw = unknown> {
   name: string;
   /** Cities this site covers. */
   cities: readonly CityId[];
+  /**
+   * False when the site refuses our server (bot protection): it is then not
+   * collected, and only offered as an alert link.
+   */
+  collect?: boolean;
 
   /** Yields the site's raw records matching the criteria, page after page. */
   search(criteria: SearchCriteria, context: SourceContext): AsyncIterable<Raw>;
