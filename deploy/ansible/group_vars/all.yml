@@ -17,7 +17,7 @@ env_file: "{{ playbook_dir }}/production.env"
 
 # ── nginx reverse proxy + Let's Encrypt (webproxy.yml) ───────────────────────
 # Public domain pointed (A/AAAA record) at the VPS. Set it before the first run.
-domain: CHANGE-ME.example.com
+domain: rent.ratelteam.fr
 letsencrypt_email: antoine.gautrain@gmail.com
 
 # Loopback port the app container is published on. Must match APP_PORT in

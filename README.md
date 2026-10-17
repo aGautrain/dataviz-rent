@@ -11,6 +11,8 @@ vers une adresse, le prix, le nombre de chambres et la surface. Beta : Paris, Re
 | `src/db/` | Schéma Postgres/PostGIS (Drizzle) et accès aux annonces. |
 | `src/lib/beta-access.ts` | Accès réservé aux testeurs (authentification HTTP Basic). |
 | `src/proxy.ts` | Applique l'accès beta à toutes les pages, sauf `/api/health`. |
+| `src/sources/` | Collecte des annonces : contrat commun des sites (`types.ts`), pipeline (`collect.ts`), registre (`registry.ts`) et un adaptateur par site dans `adapters/`. |
+| `src/app/api/cron/collect` | Lance une collecte, appelé toutes les 6 h par le conteneur `scheduler`. |
 | `drizzle/` | Migrations SQL. |
 | `deploy/` | Configuration du reverse proxy HTTPS (Caddy). |
 
@@ -20,6 +22,19 @@ Tout ce qui varie selon le marché est décrit dans `src/domain/countries.ts` : 
 surface, façon de compter les pièces (« pièces » en France, « bedrooms » au Royaume-Uni). Les
 annonces sont stockées dans un format commun : loyer mensuel en centimes avec sa devise, surface en
 m², chambres et pièces, position GPS. Ajouter une ville revient à l'ajouter à `CITIES`.
+
+### Ajouter un site d'annonces
+
+Chaque site est un adaptateur qui implémente `SourceAdapter` (`src/sources/types.ts`) :
+
+- `search(critères)` renvoie les annonces brutes du site, page après page. Si le site plafonne ses
+  résultats, l'adaptateur lève `SearchTruncated`, et la collecte ne marque alors rien comme retiré.
+- `normalize(annonce)` la convertit au format commun `Listing`, ou renvoie `null` si elle est inutilisable.
+- `buildSearchUrl(critères)` donne la page de recherche du site, déjà filtrée, où créer une alerte.
+
+Pour ajouter un site, il suffit d'écrire son fichier dans `src/sources/adapters/`, de l'ajouter à
+`ADAPTERS` dans `registry.ts` et de tester son parsing sur un vrai échantillon dans `tests/fixtures/`.
+`LIVE_SOURCES=1 npx vitest run tests/live-sources.test.ts` vérifie chaque site contre les vraies pages.
 
 ## Développement local
 
