@@ -1,7 +1,8 @@
 """Builds a tiny network for testing the MOTIS integration in CI.
 
-One 7 km street running east-west, with a metro line along it: stop A near the
-west end, stop B near the east end, a train every 10 minutes taking 6 minutes.
+A 7 km by 2 km grid of streets, with a metro line along its middle street:
+stop A near the west end, stop B near the east end, a train every 10 minutes
+taking 6 minutes.
 Walking end to end takes well over an hour, so a short travel time proves the
 transit leg was used.
 
@@ -14,30 +15,38 @@ import zipfile
 from pathlib import Path
 
 LAT = 48.0
-WEST, EAST, STEP = 2.000, 2.100, 0.002
+WEST, EAST = 2.000, 2.100
+SOUTH, NORTH = 47.990, 48.010
+STEP = 0.001
 
 
 def osm_xml() -> str:
-    count = round((EAST - WEST) / STEP) + 1
-    nodes = [
-        f'  <node id="{i + 1}" version="1" lat="{LAT:.6f}" lon="{WEST + i * STEP:.6f}"/>'
-        for i in range(count)
-    ]
-    refs = "\n".join(f'    <nd ref="{i + 1}"/>' for i in range(count))
-    return "\n".join(
-        [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            '<osm version="0.6" generator="dataviz-rent fixture">',
-            *nodes,
-            '  <way id="1" version="1">',
-            refs,
-            '    <tag k="highway" v="residential"/>',
-            '    <tag k="name" v="Grande Rue"/>',
-            "  </way>",
-            "</osm>",
-            "",
-        ]
-    )
+    """A grid of streets every ~100 m. Routers drop tiny isolated street
+    networks, so the town needs a few thousand nodes to be kept."""
+    cols = round((EAST - WEST) / STEP) + 1
+    rows = round((NORTH - SOUTH) / STEP) + 1
+
+    def node_id(row: int, col: int) -> int:
+        return row * cols + col + 1
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<osm version="0.6" generator="dataviz-rent fixture">']
+    for row in range(rows):
+        for col in range(cols):
+            lines.append(
+                f'  <node id="{node_id(row, col)}" version="1" '
+                f'lat="{SOUTH + row * STEP:.6f}" lon="{WEST + col * STEP:.6f}"/>'
+            )
+    way_id = 0
+    streets = [[node_id(row, col) for col in range(cols)] for row in range(rows)]
+    streets += [[node_id(row, col) for row in range(rows)] for col in range(cols)]
+    for street in streets:
+        way_id += 1
+        lines.append(f'  <way id="{way_id}" version="1">')
+        lines += [f'    <nd ref="{ref}"/>' for ref in street]
+        lines.append('    <tag k="highway" v="residential"/>')
+        lines.append("  </way>")
+    lines += ["</osm>", ""]
+    return "\n".join(lines)
 
 
 def gtfs_files() -> dict[str, str]:
