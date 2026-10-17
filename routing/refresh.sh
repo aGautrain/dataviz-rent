@@ -1,10 +1,10 @@
 #!/bin/sh
-# Rebuilds the travel-time data from fresh downloads and restarts MOTIS.
-# Run from the project directory on the server (deploy/ansible/routing.yml
-# installs a nightly cron job for it). MOTIS keeps answering during the
-# downloads, then stops for the import, which needs the memory: meanwhile the
-# app shows results without travel times. It is restarted even if a step
-# fails, on the data it had.
+# Builds the travel-time data and (re)starts MOTIS. Run from the project
+# directory on the server (deploy/ansible/routing.yml runs it). The timetables
+# are pinned to one day, so this runs once; run it again only to change that
+# day or to add a timetable that was missing (see prepare.sh). MOTIS keeps
+# answering during the downloads, then stops for the import, which needs the
+# memory, and is restarted even if the import fails.
 set -eu
 cd "$(dirname "$0")/.."
 

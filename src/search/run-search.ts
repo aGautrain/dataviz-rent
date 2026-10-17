@@ -4,7 +4,7 @@ import type { CityConfig } from "@/domain/countries";
 import type { Listing } from "@/domain/listing";
 import type { CommuteCriteria, SearchCriteria } from "@/domain/search";
 import type { Place } from "@/geocoding";
-import { nextWorkdayArrival } from "@/routing/arrival";
+import { timetableArrival } from "@/routing/arrival";
 import type { TravelTimeEngine } from "@/routing/types";
 
 export interface SearchHit {
@@ -31,7 +31,6 @@ export interface SearchDeps {
   db: Database;
   geocode: (query: string, city: CityConfig) => Promise<Place | null>;
   engine: TravelTimeEngine | null;
-  now: () => Date;
   log?: (message: string) => void;
 }
 
@@ -74,7 +73,7 @@ export async function runSearch(
     minutes = await deps.engine.travelTimes(
       candidates.map((listing) => listing.location!),
       destination.location,
-      nextWorkdayArrival(deps.now(), city.timeZone),
+      timetableArrival(city.timeZone),
     );
   } catch (error) {
     deps.log?.(`[search] travel times failed: ${error instanceof Error ? error.message : error}`);

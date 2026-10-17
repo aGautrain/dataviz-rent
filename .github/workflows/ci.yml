@@ -83,7 +83,7 @@ jobs:
         if: failure()
         run: |
           docker logs motis || true
-          when=$(date -u -d 'next monday 07:00' +%Y-%m-%dT%H:%M:%SZ)
+          when="$(sed -n 's/^  first_day: "\(.*\)"$/\1/p' routing/config.yml)T08:00:00Z"
           echo "--- one-to-many-intermodal (as the app sends it)"
           curl -sS -X POST -H 'content-type: application/json' http://127.0.0.1:8080/api/experimental/one-to-many-intermodal \
             -d "{\"one\":\"48.0,2.097\",\"many\":[\"48.0,2.003\",\"48.0,2.093\"],\"time\":\"$when\",\"arriveBy\":true,\"maxTravelTime\":120,\"maxDirectTime\":7200}"

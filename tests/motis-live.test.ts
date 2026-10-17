@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextWorkdayArrival } from "@/routing/arrival";
+import { timetableArrival } from "@/routing/arrival";
 import { createMotisEngine } from "@/routing/motis";
 
 // Runs against a MOTIS server loaded with routing/test/make_fixture.py's
@@ -8,7 +8,7 @@ const url = process.env.MOTIS_TEST_URL;
 
 describe.skipIf(!url)("MOTIS on the fixture network", () => {
   const engine = createMotisEngine({ baseUrl: url ?? "http://localhost:8080" });
-  const arriveBy = nextWorkdayArrival(new Date(), "Europe/Paris");
+  const arriveBy = timetableArrival("Europe/Paris");
   const eastEnd = { lat: 48.0, lng: 2.097 };
 
   it("takes the metro for long trips and walks short ones", async () => {
@@ -28,17 +28,5 @@ describe.skipIf(!url)("MOTIS on the fixture network", () => {
     expect(onFoot).not.toBeNull();
     expect(onFoot!).toBeLessThanOrEqual(8);
     expect(nowhere).toBeNull();
-  });
-
-  // The M2 feed ended two days ago (see make_fixture.py), like STAR's rolling week.
-  it("repeats the weekly pattern of a feed that has ended", async () => {
-    const [nearC] = await engine.travelTimes(
-      [{ lat: 48.01, lng: 2.003 }],
-      { lat: 48.01, lng: 2.097 },
-      arriveBy,
-    );
-    // Through M1 instead, a kilometre south, it takes 25 minutes or more.
-    expect(nearC).not.toBeNull();
-    expect(nearC!).toBeLessThanOrEqual(18);
   });
 });

@@ -1,17 +1,17 @@
 # MOTIS configuration for the beta cities. prepare.sh downloads the files named
 # here into the import directory; `motis import` turns them into /data.
 # Sized for a small VPS (2 vCPU, 2 GB RAM + swap): one worker thread, tight
-# map areas and ten days of timetables. Queries are slower, not wrong.
+# map areas and a single day of timetables. Queries are slower, not wrong.
 server:
   port: 8080
   n_threads: 1
 osm: region.osm.pbf
 street_routing: true
 timetable:
-  first_day: TODAY
-  # Memory grows with the days loaded. The nightly refresh reloads them, and
-  # searches always ask for the next working day.
-  num_days: 10
+  # The one day searches ask for (TIMETABLE_DAY in src/routing/arrival.ts): a
+  # regular Monday, imported once. prepare.sh checks the timetables cover it.
+  first_day: "2026-11-02"
+  num_days: 1
   railviz: false
   with_shapes: false
   datasets:
@@ -19,10 +19,6 @@ timetable:
       path: idfm.gtfs.zip
     star:
       path: star.gtfs.zip
-      # STAR only publishes about a week ahead: repeat its weekly pattern past
-      # the end of the feed. When the next version is out, prepare.sh adds it
-      # here, above these lines, so it is the one that gets extended.
-      extend_calendar: true
     london:
       path: london.gtfs.zip
 limits:

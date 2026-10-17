@@ -1,25 +1,22 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { nextWorkdayArrival } from "@/routing/arrival";
-import { withTravelTimeCache } from "@/routing/cache";
+import { TIMETABLE_DAY, timetableArrival } from "@/routing/arrival";
+import { withTravelTimeCache, type TravelTimeStore } from "@/routing/cache";
 import { createMotisEngine, fastestMinutes } from "@/routing/motis";
 
-describe("nextWorkdayArrival", () => {
-  it("skips the weekend and uses the city's summer time", () => {
-    // Saturday 17 October 2026, 12:00 in Paris.
-    const now = new Date("2026-10-17T10:00:00Z");
-    expect(nextWorkdayArrival(now, "Europe/Paris").toISOString()).toBe("2026-10-19T07:00:00.000Z");
-    expect(nextWorkdayArrival(now, "Europe/London").toISOString()).toBe("2026-10-19T08:00:00.000Z");
+describe("timetable day", () => {
+  it("is a Monday, and the day MOTIS loads", () => {
+    expect(new Date(`${TIMETABLE_DAY}T12:00:00Z`).getUTCDay()).toBe(1);
+    const config = readFileSync(new URL("../routing/config.yml", import.meta.url), "utf8");
+    expect(config).toMatch(new RegExp(`^  first_day: "${TIMETABLE_DAY}"$`, "m"));
   });
 
-  it("handles the switch to winter time in between", () => {
-    // Friday 23 October; clocks go back on Sunday 25.
-    const now = new Date("2026-10-23T16:00:00Z");
-    expect(nextWorkdayArrival(now, "Europe/Paris").toISOString()).toBe("2026-10-26T08:00:00.000Z");
-  });
-
-  it("is the next day on weekdays, even before 9 am", () => {
-    const now = new Date("2026-11-03T05:00:00Z");
-    expect(nextWorkdayArrival(now, "Europe/Paris").toISOString()).toBe("2026-11-04T08:00:00.000Z");
+  it("arrives at 9 am in the city's time zone", () => {
+    // Winter time: Paris is UTC+1, London UTC+0.
+    expect(timetableArrival("Europe/Paris", "2026-11-02").toISOString()).toBe("2026-11-02T08:00:00.000Z");
+    expect(timetableArrival("Europe/London", "2026-11-02").toISOString()).toBe("2026-11-02T09:00:00.000Z");
+    // Summer time.
+    expect(timetableArrival("Europe/Paris", "2026-06-15").toISOString()).toBe("2026-06-15T07:00:00.000Z");
   });
 });
 
@@ -101,5 +98,38 @@ describe("travel time cache", () => {
     await engine.travelTimes([a], to, new Date("2026-10-20T07:00:00Z"));
     await engine.travelTimes([a], { lat: 5, lng: 5 }, monday);
     expect(calls).toEqual([2, 1, 1, 1]);
+  });
+
+  it("reads and fills the store, so a restart routes nothing again", async () => {
+    const rows = new Map<string, number | null>();
+    const rowKey = (arriveBy: Date, destination: string, origin: string) =>
+      `${arriveBy.toISOString()}|${destination}|${origin}`;
+    const store: TravelTimeStore = {
+      async get(arriveBy, destination, origins) {
+        const known = origins.filter((origin) => rows.has(rowKey(arriveBy, destination, origin)));
+        return new Map(known.map((origin) => [origin, rows.get(rowKey(arriveBy, destination, origin))!]));
+      },
+      async put(arriveBy, destination, minutes) {
+        minutes.forEach((value, origin) => rows.set(rowKey(arriveBy, destination, origin), value));
+      },
+    };
+    const calls: number[] = [];
+    const motis = {
+      async travelTimes(origins: { lat: number; lng: number }[]) {
+        calls.push(origins.length);
+        return origins.map((origin) => (origin.lng > 10 ? null : Math.round(origin.lng)));
+      },
+    };
+    const to = { lat: 0, lng: 0 };
+    const monday = new Date("2026-11-02T08:00:00Z");
+    const a = { lat: 1, lng: 1 };
+    const far = { lat: 3, lng: 20 };
+
+    expect(await withTravelTimeCache(motis, { store }).travelTimes([a, far], to, monday)).toEqual([1, null]);
+    expect(rows.get(rowKey(monday, "0.0000,0.0000", "3.0000,20.0000"))).toBeNull();
+    // A new process: empty memory, same store.
+    const restarted = withTravelTimeCache(motis, { store });
+    expect(await restarted.travelTimes([far, a, { lat: 2, lng: 2 }], to, monday)).toEqual([null, 1, 2]);
+    expect(calls).toEqual([2, 1]);
   });
 });
