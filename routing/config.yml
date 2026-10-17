@@ -1,0 +1,25 @@
+# MOTIS configuration for the beta cities. prepare.sh downloads the files named
+# here into the import directory; `motis import` turns them into /data.
+server:
+  port: 8080
+  n_threads: 2
+osm: region.osm.pbf
+street_routing: true
+timetable:
+  first_day: TODAY
+  # Most feeds only publish a few weeks ahead; the weekly refresh reloads them.
+  num_days: 30
+  railviz: false
+  with_shapes: false
+  datasets:
+    idfm:
+      path: idfm.gtfs.zip
+    star:
+      path: star.gtfs.zip
+    london:
+      path: london.gtfs.zip
+limits:
+  # The app routes up to 1000 listings per request (src/routing/motis.ts).
+  onetomany_max_many: 1000
+logging:
+  log_level: info

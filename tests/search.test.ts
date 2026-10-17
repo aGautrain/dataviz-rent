@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isCityId } from "@/domain/countries";
-import { parseCriteria } from "@/domain/search";
+import { parseCommute, parseCriteria } from "@/domain/search";
 
 describe("parseCriteria", () => {
   it("reads every filter from the query", () => {
@@ -41,5 +41,20 @@ describe("parseCriteria", () => {
       cityId: "rennes",
       furnished: false,
     });
+  });
+});
+
+describe("parseCommute", () => {
+  it("reads the address and the maximum time", () => {
+    expect(parseCommute({ to: " 8 rue de Rivoli ", maxMinutes: "40" })).toEqual({
+      to: "8 rue de Rivoli",
+      maxMinutes: 40,
+    });
+  });
+
+  it("is off without an address, and ignores a zero limit", () => {
+    expect(parseCommute({ maxMinutes: "40" })).toBeNull();
+    expect(parseCommute({ to: "  " })).toBeNull();
+    expect(parseCommute({ to: "Rennes", maxMinutes: "0" })).toEqual({ to: "Rennes", maxMinutes: undefined });
   });
 });

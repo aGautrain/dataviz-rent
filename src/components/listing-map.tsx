@@ -1,9 +1,9 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useRef } from "react";
-import type { BoundingBox } from "@/domain/countries";
+import type { BoundingBox, LatLng } from "@/domain/countries";
 
 export interface MapPoint {
   id: number;
@@ -12,6 +12,8 @@ export interface MapPoint {
   title: string;
   price: string;
   url: string;
+  /** Door-to-door minutes to the commute address, if one was given. */
+  minutes: number | null;
 }
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
@@ -24,7 +26,8 @@ function toGeoJson(points: MapPoint[]): GeoJSON.FeatureCollection<GeoJSON.Point>
       type: "Feature",
       id: point.id,
       geometry: { type: "Point", coordinates: [point.lng, point.lat] },
-      properties: { id: point.id },
+      // -1 = no travel time, drawn in the default colour.
+      properties: { id: point.id, minutes: point.minutes ?? -1 },
     })),
   };
 }
@@ -45,27 +48,43 @@ function popupContent(point: MapPoint): HTMLElement {
   return link;
 }
 
-function fitTo(map: MapLibreMap, points: MapPoint[], fallback: BoundingBox) {
-  if (points.length === 0) {
+function fitTo(map: MapLibreMap, points: MapPoint[], fallback: BoundingBox, destination: LatLng | null) {
+  const places: LatLng[] = destination ? [...points, destination] : points;
+  if (places.length === 0) {
     map.fitBounds(fallback, { padding: 20, animate: false });
     return;
   }
-  const lngs = points.map((point) => point.lng);
-  const lats = points.map((point) => point.lat);
+  const lngs = places.map((place) => place.lng);
+  const lats = places.map((place) => place.lat);
   map.fitBounds(
     [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
     { padding: 40, maxZoom: 15, animate: false },
   );
 }
 
-export function ListingMap({ points, bbox }: { points: MapPoint[]; bbox: BoundingBox }) {
+function placeDestination(map: MapLibreMap, marker: Marker, destination: LatLng | null) {
+  if (destination) marker.setLngLat([destination.lng, destination.lat]).addTo(map);
+  else marker.remove();
+}
+
+export function ListingMap({
+  points,
+  bbox,
+  destination,
+}: {
+  points: MapPoint[];
+  bbox: BoundingBox;
+  /** The commute address, shown as a marker. */
+  destination: LatLng | null;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const latest = useRef({ points, bbox });
+  const markerRef = useRef<Marker | null>(null);
+  const latest = useRef({ points, bbox, destination });
 
   useEffect(() => {
-    latest.current = { points, bbox };
-  }, [points, bbox]);
+    latest.current = { points, bbox, destination };
+  }, [points, bbox, destination]);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,12 +111,29 @@ export function ListingMap({ points, bbox }: { points: MapPoint[]; bbox: Boundin
           source: SOURCE_ID,
           paint: {
             "circle-radius": 6,
-            "circle-color": "#2563eb",
+            // Blue without travel times; green to red as the commute gets longer.
+            "circle-color": [
+              "step",
+              ["get", "minutes"],
+              "#2563eb",
+              0,
+              "#16a34a",
+              20,
+              "#65a30d",
+              30,
+              "#ca8a04",
+              45,
+              "#ea580c",
+              60,
+              "#dc2626",
+            ],
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 1.5,
           },
         });
-        fitTo(map, current, fallback);
+        fitTo(map, current, fallback, latest.current.destination);
+        markerRef.current = new maplibre.Marker({ color: "#111827" }).setLngLat([0, 0]);
+        placeDestination(map, markerRef.current, latest.current.destination);
         mapRef.current = map;
       });
 
@@ -121,6 +157,7 @@ export function ListingMap({ points, bbox }: { points: MapPoint[]; bbox: Boundin
     return () => {
       cancelled = true;
       mapRef.current = null;
+      markerRef.current = null;
       map?.remove();
     };
   }, []);
@@ -131,8 +168,9 @@ export function ListingMap({ points, bbox }: { points: MapPoint[]; bbox: Boundin
     const source = map?.getSource<GeoJSONSource>(SOURCE_ID);
     if (!map || !source) return;
     source.setData(toGeoJson(points));
-    fitTo(map, points, bbox);
-  }, [points, bbox]);
+    fitTo(map, points, bbox, destination);
+    if (markerRef.current) placeDestination(map, markerRef.current, destination);
+  }, [points, bbox, destination]);
 
   return <div ref={container} className="h-full min-h-80 w-full" />;
 }

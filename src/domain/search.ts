@@ -50,3 +50,20 @@ export function parseCriteria(query: Query, isCity: (id: string) => id is CityId
     furnished: furnished === "yes" ? true : furnished === "no" ? false : undefined,
   };
 }
+
+/**
+ * Where the tester commutes to. Kept apart from SearchCriteria because no
+ * listing site can filter on it: the app computes travel times itself.
+ */
+export interface CommuteCriteria {
+  /** Address as typed, geocoded at search time. */
+  to: string;
+  maxMinutes?: number;
+}
+
+export function parseCommute(query: Query): CommuteCriteria | null {
+  const to = first(query.to)?.trim();
+  if (!to) return null;
+  const maxMinutes = positiveNumber(query.maxMinutes);
+  return { to: to.slice(0, 200), maxMinutes: maxMinutes || undefined };
+}

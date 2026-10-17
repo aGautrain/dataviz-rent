@@ -14,7 +14,16 @@ function areaLabel(listing: Listing): string | null {
     : m2;
 }
 
-export function ListingCard({ listing, timeZone }: { listing: Listing; timeZone: string }) {
+export function ListingCard({
+  listing,
+  timeZone,
+  minutes,
+}: {
+  listing: Listing;
+  timeZone: string;
+  /** Door-to-door time to the commute address; undefined when none was given. */
+  minutes?: number | null;
+}) {
   const country = COUNTRIES[listing.country];
   const details = [
     sizeLabel(listing, country.roomConvention),
@@ -56,6 +65,11 @@ export function ListingCard({ listing, timeZone }: { listing: Listing; timeZone:
           )}
         </p>
         <p className="text-sm">{details.join(" · ")}</p>
+        {minutes !== undefined && (
+          <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+            {minutes === null ? "Pas de trajet trouvé" : `${minutes} min de trajet`}
+          </p>
+        )}
         <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">{listing.title}</p>
         <p className="text-xs text-zinc-500">
           {getAdapter(listing.source)?.name ?? listing.source}
