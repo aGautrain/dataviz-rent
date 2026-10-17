@@ -1,0 +1,14 @@
+# Local database only: `docker compose -f docker-compose.dev.yml up -d`, then `npm run dev`.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: dataviz
+      POSTGRES_PASSWORD: dataviz
+      POSTGRES_DB: dataviz
+    ports: ["5432:5432"]
+    volumes:
+      - db-dev-data:/var/lib/postgresql/data
+
+volumes:
+  db-dev-data:
