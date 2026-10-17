@@ -1,0 +1,35 @@
+{
+  "features": ["Two double bedroom flat"],
+  "address": "Ash Grove, London SE20",
+  "humanised-property-type": "Flat",
+  "price-qualifier": null,
+  "images": [
+    {
+      "default": "https://media.onthemarket.com/properties/18154013/1650607294/image-0-480x320.jpg",
+      "portrait?": false,
+      "webp": "https://media.onthemarket.com/properties/18154013/1650607294/image-0-480x320.webp"
+    }
+  ],
+  "details-url": "/details/18154013/",
+  "main-label": "Spotlight Property",
+  "fees-description": "<p>The asking rent does not include charges ...</p>",
+  "agent": {
+    "id": 68223,
+    "name": "GP Properties of London - Bromley",
+    "contact-url": "/agents/contact/18154013/?form-name=details-contact",
+    "details-url": "/agents/branch/gp-properties-of-london-bromley/",
+    "rank": 2,
+    "enhanced?": false
+  },
+  "property-title": "2 bedroom flat to rent",
+  "short-price": "£1,550",
+  "bedrooms": 2,
+  "id": "18154013",
+  "days-since-added-reduced": "Added < 14 days",
+  "spotlight?": true,
+  "fees-label": "Tenancy info",
+  "bathrooms": 1,
+  "cover-image": { "default": "https://media.onthemarket.com/properties/18154013/1650607294/image-0-480x320.jpg" },
+  "location": { "lon": -0.056727, "lat": 51.406747 },
+  "price": "£1,550 pcm (£358 pw)"
+}

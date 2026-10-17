@@ -1,11 +1,12 @@
 import type { CityId } from "@/domain/countries";
 import type { SearchCriteria } from "@/domain/search";
 import { bienici } from "./adapters/bienici";
+import { onthemarket } from "./adapters/onthemarket";
 import { rightmove } from "./adapters/rightmove";
 import type { SourceAdapter } from "./types";
 
 /** Every supported listing site. Adding a site = adding its adapter here. */
-export const ADAPTERS: readonly SourceAdapter[] = [bienici, rightmove];
+export const ADAPTERS: readonly SourceAdapter[] = [bienici, rightmove, onthemarket];
 
 export function adaptersFor(cityId: CityId): SourceAdapter[] {
   return ADAPTERS.filter((adapter) => adapter.cities.includes(cityId));
