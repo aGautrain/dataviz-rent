@@ -21,6 +21,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets and the health check used by the host.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health).*)"],
+  // Everything except static assets, the host health check and the cron
+  // endpoint (which checks its own bearer token).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|api/cron).*)"],
 };

@@ -7,5 +7,7 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // The database tests share one disposable database and reset it.
+    fileParallelism: false,
   },
 });

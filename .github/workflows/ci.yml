@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Write a throwaway production env
-        run: printf 'APP_PORT=3100\nPOSTGRES_PASSWORD=ci\nBETA_USERS=ci:ci\n' > .env
+        run: printf 'APP_PORT=3100\nPOSTGRES_PASSWORD=ci\nBETA_USERS=ci:ci\nCRON_SECRET=ci\n' > .env
       - run: docker compose up -d --build --wait app
       - name: Health check on the loopback port
         run: curl -fsS --retry 15 --retry-connrefused --retry-all-errors --retry-delay 2 http://127.0.0.1:3100/api/health

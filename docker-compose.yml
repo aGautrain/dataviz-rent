@@ -34,10 +34,29 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-dataviz}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dataviz}
       BETA_USERS: ${BETA_USERS:?set BETA_USERS in .env}
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
     ports:
       - "127.0.0.1:${APP_PORT:-3100}:3000"
     depends_on:
       migrate: { condition: service_completed_successfully }
+
+  # Triggers a listing collection every COLLECT_EVERY_SECONDS (default 6 h).
+  scheduler:
+    image: curlimages/curl:8.10.1
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+      COLLECT_EVERY_SECONDS: ${COLLECT_EVERY_SECONDS:-21600}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 60
+        while true; do
+          curl -sS --max-time 3600 -X POST -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/collect || true
+          echo
+          sleep "$$COLLECT_EVERY_SECONDS"
+        done
+    depends_on: [app]
 
 volumes:
   db-data:
