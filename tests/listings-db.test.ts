@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
-import { activeListings, markUnseenAsRemoved, upsertListings } from "@/db/listings";
+import { activeListings, markUnseenAsRemoved, searchListings, upsertListings } from "@/db/listings";
 import type { Listing } from "@/domain/listing";
 
 // Runs only against a disposable database: TEST_DATABASE_URL is wiped.
@@ -63,5 +63,23 @@ describe.skipIf(!url)("listings repository", () => {
 
     await upsertListings(db, [sample]);
     expect(await activeListings(db, ["rennes"])).toHaveLength(1);
+  });
+
+  it("searches by rent, bedrooms, area and furnished", async () => {
+    const studio: Listing = { ...sample, sourceId: "43", rooms: 1, areaM2: 18, rent: { amountMinor: 50000, currency: "EUR" } };
+    const ukFlat: Listing = { ...sample, sourceId: "44", rooms: null, bedrooms: 2, areaM2: 60, furnished: true, rent: { amountMinor: 110000, currency: "EUR" } };
+    await upsertListings(db, [studio, ukFlat]);
+    const ids = async (criteria: Omit<Parameters<typeof searchListings>[1], "cityId">) =>
+      (await searchListings(db, { cityId: "rennes", ...criteria })).map((l) => l.sourceId).sort();
+
+    expect(await ids({})).toEqual(["42", "43", "44"]);
+    expect(await ids({ maxRent: 750 })).toEqual(["42", "43"]);
+    expect(await ids({ minRent: 600, maxRent: 1000 })).toEqual(["42"]);
+    // A T2 counts as one bedroom, a T1 as a studio.
+    expect(await ids({ minBedrooms: 1 })).toEqual(["42", "44"]);
+    expect(await ids({ maxBedrooms: 0 })).toEqual(["43"]);
+    expect(await ids({ minAreaM2: 40, maxAreaM2: 50 })).toEqual(["42"]);
+    expect(await ids({ furnished: true })).toEqual(["44"]);
+    expect(await searchListings(db, { cityId: "paris" })).toEqual([]);
   });
 });

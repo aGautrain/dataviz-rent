@@ -12,6 +12,7 @@ vers une adresse, le prix, le nombre de chambres et la surface. Beta : Paris, Re
 | `src/lib/beta-access.ts` | Accès réservé aux testeurs (authentification HTTP Basic). |
 | `src/proxy.ts` | Applique l'accès beta à toutes les pages, sauf `/api/health`. |
 | `src/sources/` | Collecte des annonces : contrat commun des sites (`types.ts`), pipeline (`collect.ts`), registre (`registry.ts`) et un adaptateur par site dans `adapters/`. |
+| `src/app/page.tsx`, `src/components/` | Page de recherche : filtres (dans l'URL, donc partageables), liste, carte MapLibre (fond OpenFreeMap) et liens « Créer une alerte » vers chaque site. |
 | `src/app/api/cron/collect` | Lance une collecte, appelé toutes les 6 h par le conteneur `scheduler`. |
 | `drizzle/` | Migrations SQL. |
 | `deploy/` | Configuration du reverse proxy HTTPS (Caddy). |
