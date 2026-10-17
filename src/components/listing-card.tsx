@@ -2,6 +2,7 @@ import { COUNTRIES } from "@/domain/countries";
 import { sizeLabel, type Listing } from "@/domain/listing";
 import { formatArea, formatMoney } from "@/domain/units";
 import { getAdapter } from "@/sources/registry";
+import { POINT_ID_ATTRIBUTE } from "./map-highlight";
 
 /** The interface is in French whatever the market, so numbers are too. */
 export const UI_LOCALE = "fr-FR";
@@ -18,8 +19,11 @@ export function ListingCard({
   listing,
   timeZone,
   minutes,
+  pointId,
 }: {
   listing: Listing;
+  /** Id of the listing's point on the map, when it has one. */
+  pointId?: number;
   timeZone: string;
   /** Door-to-door time to the commute address; undefined when none was given. */
   minutes?: number | null;
@@ -38,6 +42,7 @@ export function ListingCard({
 
   return (
     <a
+      {...(pointId !== undefined && { [POINT_ID_ATTRIBUTE]: pointId })}
       href={listing.url}
       target="_blank"
       rel="noopener noreferrer"

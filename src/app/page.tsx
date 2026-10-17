@@ -108,10 +108,11 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
         />
       </div>
       <ul className="flex flex-col gap-2 p-4 lg:col-start-1 lg:pt-0">
-        {outcome.hits.map(({ listing, minutes }) => (
+        {outcome.hits.map(({ listing, minutes }, index) => (
           <li key={`${listing.source}:${listing.sourceId}`}>
             <ListingCard
               listing={listing}
+              pointId={listing.location ? index : undefined}
               timeZone={city.timeZone}
               minutes={showMinutes ? minutes : undefined}
             />

@@ -1,9 +1,10 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
+import type { FilterSpecification, GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import type { BoundingBox, LatLng } from "@/domain/countries";
+import { POINT_ID_ATTRIBUTE } from "./map-highlight";
 
 export interface MapPoint {
   id: number;
@@ -18,6 +19,17 @@ export interface MapPoint {
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const SOURCE_ID = "listings";
+const HIGHLIGHT_ID = "listings-highlight";
+/** Shows the point with this id on the highlight layer; null (id -1) shows none. */
+function highlightFilter(id: number | null): FilterSpecification {
+  return ["==", ["id"], id ?? -1];
+}
+
+function hoveredPointId(target: EventTarget | null): number | null {
+  const card = target instanceof Element ? target.closest(`[${POINT_ID_ATTRIBUTE}]`) : null;
+  const id = card?.getAttribute(POINT_ID_ATTRIBUTE);
+  return id ? Number(id) : null;
+}
 
 function toGeoJson(points: MapPoint[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -131,6 +143,19 @@ export function ListingMap({
             "circle-stroke-width": 1.5,
           },
         });
+        // Drawn above the others, so the hovered listing is never hidden.
+        map.addLayer({
+          id: HIGHLIGHT_ID,
+          type: "circle",
+          source: SOURCE_ID,
+          filter: highlightFilter(null),
+          paint: {
+            "circle-radius": 11,
+            "circle-color": "#111827",
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 3,
+          },
+        });
         fitTo(map, current, fallback, latest.current.destination);
         markerRef.current = new maplibre.Marker({ color: "#111827" }).setLngLat([0, 0]);
         placeDestination(map, markerRef.current, latest.current.destination);
@@ -154,7 +179,25 @@ export function ListingMap({
       });
     });
 
+    // Hovering (or tabbing to) a listing card highlights its point.
+    let highlighted: number | null = null;
+    const highlight = (id: number | null) => {
+      if (id === highlighted || !mapRef.current?.getLayer(HIGHLIGHT_ID)) return;
+      highlighted = id;
+      mapRef.current.setFilter(HIGHLIGHT_ID, highlightFilter(id));
+    };
+    const onOver = (event: Event) => highlight(hoveredPointId(event.target));
+    const onLeaveWindow = (event: MouseEvent) => {
+      if (event.relatedTarget === null) highlight(null);
+    };
+    document.addEventListener("mouseover", onOver);
+    document.addEventListener("focusin", onOver);
+    document.addEventListener("mouseout", onLeaveWindow);
+
     return () => {
+      document.removeEventListener("mouseover", onOver);
+      document.removeEventListener("focusin", onOver);
+      document.removeEventListener("mouseout", onLeaveWindow);
       cancelled = true;
       mapRef.current = null;
       markerRef.current = null;
