@@ -13,13 +13,13 @@ fetch() {
   mv "$1.tmp" "$1"
 }
 
-# OpenStreetMap (Geofabrik), cut to each city and its commuter belt so the
-# street graph stays small.
+# OpenStreetMap (Geofabrik), cut to each city and its inner suburbs so the
+# street graph fits a small server.
 fetch idf.osm.pbf "${OSM_IDF_URL:-https://download.geofabrik.de/europe/france/ile-de-france-latest.osm.pbf}"
 fetch bretagne.osm.pbf "${OSM_BRETAGNE_URL:-https://download.geofabrik.de/europe/france/bretagne-latest.osm.pbf}"
 fetch london.osm.pbf "${OSM_LONDON_URL:-https://download.geofabrik.de/europe/united-kingdom/england/greater-london-latest.osm.pbf}"
-osmium extract --overwrite -b 1.9,48.6,2.8,49.1 idf.osm.pbf -o paris-area.osm.pbf
-osmium extract --overwrite -b -1.95,47.95,-1.45,48.3 bretagne.osm.pbf -o rennes-area.osm.pbf
+osmium extract --overwrite -b 2.15,48.75,2.55,48.97 idf.osm.pbf -o paris-area.osm.pbf
+osmium extract --overwrite -b -1.8,48.03,-1.55,48.2 bretagne.osm.pbf -o rennes-area.osm.pbf
 osmium merge --overwrite paris-area.osm.pbf rennes-area.osm.pbf london.osm.pbf -o region.osm.pbf
 rm -f idf.osm.pbf bretagne.osm.pbf paris-area.osm.pbf rennes-area.osm.pbf london.osm.pbf
 

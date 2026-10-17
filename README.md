@@ -101,13 +101,24 @@ Data Service : bus, métro, DLR, tram). L'appli lui demande en une requête le t
 chaque annonce vers l'adresse saisie, pour une arrivée à 9 h le prochain jour ouvré. Les adresses
 sont géocodées par la Base Adresse Nationale (France) et Nominatim (Royaume-Uni).
 
-L'import demande environ 6 Go de RAM : `routing.yml` refuse de tourner sur un serveur plus petit.
+Le tout est dimensionné pour le petit VPS actuel (2 vCPU, 1,8 Go de RAM) :
+
+- zones de carte serrées (Paris et petite couronne, Rennes Métropole, Grand Londres) ;
+- dix jours d'horaires et un seul thread de calcul ;
+- MOTIS plafonné à 700 Mo de RAM et un cœur : au-delà il utilise le swap, ce qui ralentit les
+  réponses (plusieurs secondes, jusqu'à une minute) sans prendre de mémoire aux autres projets ;
+- l'import hebdomadaire tourne la nuit, surtout dans le swap (8 Go, créé par `routing.yml`) ;
+- l'appli garde en mémoire les temps déjà calculés par adresse : changer un filtre de loyer ou de
+  surface ne relance pas le calcul.
+
+Sur un serveur plus gros, il suffit de relever les limites `ROUTING_*` dans `production.env`.
 Pour l'activer :
 
 1. Dans `production.env`, décommenter `COMPOSE_PROFILES=routing` et `MOTIS_URL=http://routing:8080`.
 2. `ansible-playbook deploy.yml`, puis `ansible-playbook routing.yml`. Le premier import prend
-   plusieurs dizaines de minutes. Le playbook installe aussi un rafraîchissement hebdomadaire des
-   horaires (dimanche, 3 h 17).
+   une heure ou plus. Le playbook ajoute le swap s'il n'y en a pas et installe un rafraîchissement
+   hebdomadaire des horaires (dimanche, 3 h 17), pendant lequel les temps de trajet sont
+   indisponibles.
 
 Sans MOTIS, la recherche fonctionne et signale que les temps de trajet sont indisponibles. Le
 code passe par l'interface `TravelTimeEngine` (`src/routing/`), ce qui permet de changer de

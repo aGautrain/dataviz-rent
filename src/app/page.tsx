@@ -16,7 +16,14 @@ const RESULT_LIMIT = 300;
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="flex w-full flex-1 flex-col lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr]">
-      <Suspense fallback={<p className="p-6 text-sm text-zinc-500">Chargement…</p>}>
+      <Suspense
+        fallback={
+          <p className="p-6 text-sm text-zinc-500">
+            Recherche en cours… Avec une adresse de trajet, le calcul peut prendre jusqu&apos;à une
+            minute.
+          </p>
+        }
+      >
         <Search searchParams={searchParams} />
       </Suspense>
     </main>
