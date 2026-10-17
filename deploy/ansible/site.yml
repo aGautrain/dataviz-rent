@@ -1,0 +1,6 @@
+---
+# site.yml — the full run: Docker, the app, then the nginx site + TLS.
+#   ansible-playbook site.yml
+- import_playbook: provision.yml
+- import_playbook: deploy.yml
+- import_playbook: webproxy.yml

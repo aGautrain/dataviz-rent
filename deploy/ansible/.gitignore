@@ -1,0 +1,4 @@
+# Server address and production secrets stay out of git.
+inventory.ini
+production.env
+*.retry

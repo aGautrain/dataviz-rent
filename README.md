@@ -41,17 +41,41 @@ Sans `BETA_USERS`, l'appli est ouverte en développement et fermée en productio
 | `npm run lint` / `npm run typecheck` | Vérifications statiques. |
 | `npm run db:generate` | Génère une migration après une modification de `src/db/schema.ts`. |
 
-## Mise en ligne (VPS)
+## Mise en ligne (VPS partagé)
 
-Un VPS avec Docker suffit, avec 4 Go de RAM au départ puis 8 à 16 Go quand le moteur d'itinéraires
-arrivera. Il faut aussi un nom de domaine qui pointe vers le serveur.
+L'appli tourne sur le même VPS que [ratelflix-transcriptions](https://github.com/aGautrain/ratelflix-transcriptions).
+Chaque projet garde son propre dossier, son propre port local et son propre site nginx, ce qui
+permet d'en ajouter d'autres sans toucher aux projets déjà en place.
+
+| Ressource sur le VPS | Partagée | Propre à chaque projet |
+|---|---|---|
+| nginx (80/443), certbot, ufw, fail2ban, clé SSH | ✓ (mis en place par `bootstrap.yml` de ratelflix) | |
+| Dossier d'installation | | `/opt/<projet>` |
+| Port local derrière nginx | | ratelflix `8787`, dataviz-rent `3100` |
+| Site nginx et certificat | | `/etc/nginx/sites-available/<projet>.conf`, un certificat par domaine |
+| Conteneurs, réseau et volumes Docker | | préfixés `dataviz-rent` (`name:` dans `docker-compose.yml`) |
+
+Le port de l'appli n'écoute que sur `127.0.0.1`, parce que Docker contourne ufw pour les ports
+publiés. Postgres n'est pas exposé du tout.
+
+### Déployer
+
+Les playbooks Ansible sont dans `deploy/ansible/`. Ils supposent que le VPS a déjà été sécurisé par
+`bootstrap.yml` de ratelflix.
 
 ```bash
-git clone https://github.com/aGautrain/dataviz-rent && cd dataviz-rent
-cp .env.example .env              # DOMAIN, POSTGRES_PASSWORD, BETA_USERS
-docker compose up -d --build
+cd deploy/ansible
+ansible-galaxy collection install -r requirements.yml
+cp inventory.example.ini inventory.ini        # IP du VPS (la même que ratelflix)
+cp production.env.example production.env      # mots de passe Postgres et testeurs
+# Renseigner `domain` dans group_vars/all.yml, et faire pointer son DNS vers le VPS.
+ansible-playbook site.yml                     # Docker, appli, puis site nginx + HTTPS
 ```
 
-Caddy obtient le certificat HTTPS automatiquement. Les migrations sont appliquées à chaque
-démarrage. Pour ajouter un testeur, complète `BETA_USERS` (`login:motdepasse` séparés par des
-virgules) puis lance `docker compose up -d app`.
+Pour les mises à jour suivantes : `ansible-playbook deploy.yml`. Pour ajouter un testeur, modifie
+`BETA_USERS` dans `production.env`, puis relance `deploy.yml`.
+
+### Ajouter un autre projet sur le VPS
+
+Choisis un `project_name`, un domaine et un port local libre (à ajouter au tableau ci-dessus), et
+copie le principe de `webproxy.yml` : un fichier de site nginx à son nom, sans `default_server`.

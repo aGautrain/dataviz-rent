@@ -1,0 +1,66 @@
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# deploy.yml — push the code and production.env to the server, then rebuild and
+# restart the compose stack (migrations run on every start). Key-based,
+# idempotent. Re-run for every update.
+#
+#   ansible-playbook deploy.yml
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Deploy DatavizRent
+  hosts: dataviz
+  gather_facts: false
+
+  tasks:
+    - name: Check that production.env exists locally
+      ansible.builtin.stat:
+        path: "{{ env_file }}"
+      delegate_to: localhost
+      register: local_env
+
+    - name: Stop if production.env is missing
+      ansible.builtin.fail:
+        msg: "Create {{ env_file }} from production.env.example first."
+      when: not local_env.stat.exists
+
+    - name: Sync project to the server
+      ansible.posix.synchronize:
+        src: "{{ project_src }}/"
+        dest: "{{ app_dir }}/"
+        archive: true
+        delete: true
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=.next"
+          - "--exclude=.env*"
+          - "--exclude=deploy/ansible/inventory.ini"
+          - "--exclude=deploy/ansible/production.env"
+          - "--exclude=.DS_Store"
+          - "--exclude=.claude"
+
+    - name: Install production .env (contains secrets)
+      ansible.builtin.copy:
+        src: "{{ env_file }}"
+        dest: "{{ app_dir }}/.env"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Build images and (re)start the stack
+      ansible.builtin.command:
+        cmd: docker compose up -d --build --remove-orphans
+        chdir: "{{ app_dir }}"
+      changed_when: true
+
+    - name: Wait for the app to answer its health check
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/api/health"
+        status_code: 200
+      register: health
+      retries: 20
+      delay: 3
+      until: health.status == 200
+
+    - name: Remove dangling images left by the rebuild
+      ansible.builtin.command: docker image prune -f
+      changed_when: false

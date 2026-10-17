@@ -1,5 +1,10 @@
-# Production stack for a single VPS: database, migrations, app, HTTPS proxy.
-# Usage: cp .env.example .env, fill it in, then `docker compose up -d --build`.
+# Production stack: database, migrations, app. Deployed by deploy/ansible.
+#
+# The VPS is shared with other projects, so this stack never binds 80/443: the
+# host's nginx terminates TLS and proxies to the app on a loopback-only port.
+# Binding to 127.0.0.1 also matters because Docker-published ports bypass ufw.
+
+name: dataviz-rent
 
 services:
   db:
@@ -29,20 +34,10 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-dataviz}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dataviz}
       BETA_USERS: ${BETA_USERS:?set BETA_USERS in .env}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
     depends_on:
       migrate: { condition: service_completed_successfully }
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports: ["80:80", "443:443"]
-    environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-    depends_on: [app]
-
 volumes:
   db-data:
-  caddy-data:

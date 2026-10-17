@@ -1,0 +1,123 @@
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# webproxy.yml — add this project to the VPS's shared nginx: one site file and
+# one Let's Encrypt certificate, both named after {{ project_name }}. Other
+# projects' sites (ratelflix-transcriptions) are left untouched. Key-based,
+# idempotent.
+#
+#   ansible-playbook webproxy.yml
+#
+# Prerequisite: {{ domain }}'s A/AAAA record points at the VPS.
+# Same two-phase approach as ratelflix-transcriptions: HTTP-only site first (it
+# serves the ACME challenge), then certbot, then re-render with TLS.
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Nginx site + Let's Encrypt TLS for this project
+  hosts: dataviz
+  gather_facts: false
+
+  tasks:
+    - name: Refuse to run with the placeholder domain
+      ansible.builtin.fail:
+        msg: "Set `domain` in group_vars/all.yml first."
+      when: domain is search('CHANGE-ME')
+
+    - name: Install nginx and certbot (no-op if another project already did)
+      ansible.builtin.apt:
+        name: [nginx, certbot]
+        state: present
+        update_cache: true
+        cache_valid_time: 86400
+
+    - name: Read the nginx version
+      ansible.builtin.command: nginx -v
+      register: nginx_version
+      changed_when: false
+
+    - name: Pick the HTTP/2 syntax this nginx understands
+      # `http2 on;` only exists from nginx 1.25.1 (Debian 13); Debian 12 ships 1.22,
+      # which needs the older `listen ... http2` form.
+      ansible.builtin.set_fact:
+        nginx_http2_directive: >-
+          {{ ((nginx_version.stderr ~ nginx_version.stdout).split('nginx/')[1].split()[0]) is version('1.25.1', '>=') }}
+
+    - name: Create the ACME challenge webroot
+      ansible.builtin.file:
+        path: /var/www/certbot
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Check whether a certificate already exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      register: cert
+
+    - name: Render the nginx site (TLS {{ 'on' if cert.stat.exists else 'off until cert issued' }})
+      ansible.builtin.template:
+        src: templates/nginx-site.conf.j2
+        dest: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      vars:
+        tls_enabled: "{{ cert.stat.exists }}"
+      notify: Reload nginx
+
+    - name: Enable the site
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ project_name }}.conf"
+        state: link
+      notify: Reload nginx
+
+    - name: Check the full nginx configuration
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Flush handlers (reload nginx before requesting the cert)
+      ansible.builtin.meta: flush_handlers
+
+    - name: Obtain the Let's Encrypt certificate (webroot)
+      ansible.builtin.command: >
+        certbot certonly --webroot -w /var/www/certbot
+        -d {{ domain }} --cert-name {{ domain }}
+        --non-interactive --agree-tos -m {{ letsencrypt_email }}
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      register: certbot_run
+
+    - name: Re-render the nginx site with TLS enabled
+      ansible.builtin.template:
+        src: templates/nginx-site.conf.j2
+        dest: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      vars:
+        tls_enabled: true
+      when: certbot_run is changed or cert.stat.exists
+      notify: Reload nginx
+
+    - name: Reload nginx after a certificate renewal (shared certbot deploy hook)
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Shared by every project on this VPS: reload nginx after cert renewal.
+          systemctl reload nginx
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
