@@ -69,8 +69,11 @@ services:
     command: ["/motis", "server", "-d", "/data"]
     volumes:
       - routing-data:/data
-    # Caps MOTIS so a spike can't starve the other projects on the VPS.
-    mem_limit: ${ROUTING_MEM_LIMIT:-3g}
+    # Caps MOTIS so it can't starve the other projects on the VPS: past the
+    # RAM cap it uses swap (slower answers) instead of taking memory from them.
+    mem_limit: ${ROUTING_MEM_LIMIT:-700m}
+    memswap_limit: ${ROUTING_MEMSWAP_LIMIT:-3g}
+    cpus: 1
 
   routing-prepare:
     profiles: ["routing-import"]
@@ -88,7 +91,12 @@ services:
     volumes:
       - routing-input:/input:ro
       - routing-data:/data
-    mem_limit: ${ROUTING_IMPORT_MEM_LIMIT:-6g}
+    # The import peaks well above the server's RAM: it runs mostly in swap, on
+    # one core, at night (see refresh.sh). Slow, but the other projects keep
+    # their memory and CPU.
+    mem_limit: ${ROUTING_IMPORT_MEM_LIMIT:-800m}
+    memswap_limit: ${ROUTING_IMPORT_MEMSWAP_LIMIT:-7g}
+    cpus: 1
 
 volumes:
   db-data:

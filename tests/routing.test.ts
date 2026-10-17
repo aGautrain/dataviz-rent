@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextWorkdayArrival } from "@/routing/arrival";
+import { withTravelTimeCache } from "@/routing/cache";
 import { createMotisEngine, fastestMinutes } from "@/routing/motis";
 
 describe("nextWorkdayArrival", () => {
@@ -74,5 +75,31 @@ describe("MOTIS engine", () => {
     await expect(engine.travelTimes([{ lat: 1, lng: 1 }], { lat: 2, lng: 2 }, new Date())).rejects.toThrow(
       "MOTIS answered 500",
     );
+  });
+});
+
+describe("travel time cache", () => {
+  it("only routes origins it hasn't seen for this destination and time", async () => {
+    const calls: number[] = [];
+    const engine = withTravelTimeCache({
+      async travelTimes(origins) {
+        calls.push(origins.length);
+        return origins.map((origin) => (origin.lng > 10 ? null : Math.round(origin.lng)));
+      },
+    });
+    const to = { lat: 0, lng: 0 };
+    const monday = new Date("2026-10-19T07:00:00Z");
+    const a = { lat: 1, lng: 1 };
+    const b = { lat: 2, lng: 2 };
+    const far = { lat: 3, lng: 20 };
+
+    expect(await engine.travelTimes([a, far], to, monday)).toEqual([1, null]);
+    expect(await engine.travelTimes([b, a, far, b], to, monday)).toEqual([2, 1, null, 2]);
+    expect(calls).toEqual([2, 1]);
+
+    // Another arrival time or destination is routed again.
+    await engine.travelTimes([a], to, new Date("2026-10-20T07:00:00Z"));
+    await engine.travelTimes([a], { lat: 5, lng: 5 }, monday);
+    expect(calls).toEqual([2, 1, 1, 1]);
   });
 });
