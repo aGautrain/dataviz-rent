@@ -78,6 +78,15 @@ jobs:
       - run: npx vitest run tests/motis-live.test.ts
         env:
           MOTIS_TEST_URL: http://127.0.0.1:8080
-      - name: MOTIS logs on failure
+      - name: MOTIS logs and raw answers on failure
         if: failure()
-        run: docker logs motis || true
+        run: |
+          docker logs motis || true
+          when=$(date -u -d 'next monday 07:00' +%Y-%m-%dT%H:%M:%SZ)
+          echo "--- one-to-many-intermodal (as the app sends it)"
+          curl -sS -X POST -H 'content-type: application/json' http://127.0.0.1:8080/api/experimental/one-to-many-intermodal \
+            -d "{\"one\":\"48.0,2.097\",\"many\":[\"48.0,2.003\",\"48.0,2.093\"],\"time\":\"$when\",\"arriveBy\":true,\"maxTravelTime\":120,\"maxDirectTime\":7200}"
+          echo; echo "--- one-to-many walking"
+          curl -sS "http://127.0.0.1:8080/api/v1/one-to-many?one=48.0;2.097&many=48.0;2.003,48.0;2.093&mode=WALK&max=7200&maxMatchingDistance=250&arriveBy=true"
+          echo; echo "--- plan"
+          curl -sS "http://127.0.0.1:8080/api/v6/plan?fromPlace=48.0,2.003&toPlace=48.0,2.097&time=$when&arriveBy=true" | head -c 3000
