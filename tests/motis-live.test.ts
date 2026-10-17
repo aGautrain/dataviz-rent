@@ -8,7 +8,7 @@ const url = process.env.MOTIS_TEST_URL;
 
 describe.skipIf(!url)("MOTIS on the fixture network", () => {
   const engine = createMotisEngine({ baseUrl: url ?? "http://localhost:8080" });
-  const arriveBy = timetableArrival("Europe/Paris");
+  const arriveBy = timetableArrival({ country: "FR", timeZone: "Europe/Paris" });
   const eastEnd = { lat: 48.0, lng: 2.097 };
 
   it("takes the metro for long trips and walks short ones", async () => {

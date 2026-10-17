@@ -73,7 +73,7 @@ export async function runSearch(
     minutes = await deps.engine.travelTimes(
       candidates.map((listing) => listing.location!),
       destination.location,
-      timetableArrival(city.timeZone),
+      timetableArrival(city),
     );
   } catch (error) {
     deps.log?.(`[search] travel times failed: ${error instanceof Error ? error.message : error}`);

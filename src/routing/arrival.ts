@@ -1,3 +1,5 @@
+import type { CityConfig, CountryCode } from "@/domain/countries";
+
 /** Offset of `timeZone` from UTC at `instant`, in milliseconds. */
 function zoneOffset(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -16,19 +18,27 @@ function zoneOffset(instant: number, timeZone: string): number {
 }
 
 /**
- * The day every travel time is computed for: a regular Monday, outside school
- * and public holidays in France and England. MOTIS loads only this day's
- * timetables (`first_day` in routing/config.yml, which a test keeps equal), so
- * the data never goes stale and needs no refresh. Changing it means importing
- * the timetables again.
+ * The day travel times are computed for, per country: an ordinary weekday
+ * outside school and public holidays. MOTIS loads only these days' timetables
+ * (`first_day` and `num_days` in routing/config.yml, checked by a test), from
+ * files downloaded once and kept, so the data never goes stale and needs no
+ * refresh. London's feed starts later than the French ones, hence its own day.
  */
-export const TIMETABLE_DAY = "2026-11-02";
+export const TIMETABLE_DAYS: Record<CountryCode, string> = {
+  FR: "2026-10-15",
+  GB: "2026-10-19",
+};
 
 /** Arriving at `hour` local time in `timeZone` on `day` (YYYY-MM-DD). */
-export function timetableArrival(timeZone: string, day = TIMETABLE_DAY, hour = 9): Date {
+export function arrivalOn(day: string, timeZone: string, hour = 9): Date {
   const [year, month, date] = day.split("-").map(Number);
   // The wall-clock time, shifted by the zone's offset at that moment.
   const wall = Date.UTC(year, month - 1, date, hour);
   const guess = wall - zoneOffset(wall, timeZone);
   return new Date(wall - zoneOffset(guess, timeZone));
+}
+
+/** The arrival every commute in this city is computed for: 9 am on its country's day. */
+export function timetableArrival(city: Pick<CityConfig, "country" | "timeZone">): Date {
+  return arrivalOn(TIMETABLE_DAYS[city.country], city.timeZone);
 }

@@ -77,7 +77,7 @@ export const geocodeCache = pgTable(
 );
 
 /**
- * Travel times computed by MOTIS. The timetable is pinned to one day, so a
+ * Travel times computed by MOTIS. The timetables are pinned to one day, so a
  * time never goes stale: each listing position is routed once per address.
  * Positions are rounded to ~10 m (src/routing/cache.ts).
  */

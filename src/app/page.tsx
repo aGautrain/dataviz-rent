@@ -100,7 +100,7 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
           {showMinutes && (
             <>
               Trajets en transports vers <strong>{outcome.destination!.label}</strong>, pour une
-              arrivée à 9 h un lundi ordinaire.{" "}
+              arrivée à 9 h un jour de semaine ordinaire.{" "}
             </>
           )}
           {summary(outcome)}

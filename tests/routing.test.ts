@@ -1,22 +1,42 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { TIMETABLE_DAY, timetableArrival } from "@/routing/arrival";
+import { TIMETABLE_DAYS, arrivalOn, timetableArrival } from "@/routing/arrival";
 import { withTravelTimeCache, type TravelTimeStore } from "@/routing/cache";
 import { createMotisEngine, fastestMinutes } from "@/routing/motis";
 
-describe("timetable day", () => {
-  it("is a Monday, and the day MOTIS loads", () => {
-    expect(new Date(`${TIMETABLE_DAY}T12:00:00Z`).getUTCDay()).toBe(1);
-    const config = readFileSync(new URL("../routing/config.yml", import.meta.url), "utf8");
-    expect(config).toMatch(new RegExp(`^  first_day: "${TIMETABLE_DAY}"$`, "m"));
+describe("timetable days", () => {
+  const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+  it("are weekdays inside the days MOTIS loads", () => {
+    const config = read("routing/config.yml");
+    const first = config.match(/^  first_day: "(.+)"$/m)![1];
+    const count = Number(config.match(/^  num_days: (\d+)$/m)![1]);
+    for (const day of Object.values(TIMETABLE_DAYS)) {
+      const offset = (Date.parse(day) - Date.parse(first)) / 86_400_000;
+      expect(offset).toBeGreaterThanOrEqual(0);
+      expect(offset).toBeLessThan(count);
+      expect([1, 2, 3, 4, 5]).toContain(new Date(`${day}T12:00:00Z`).getUTCDay());
+    }
   });
 
-  it("arrives at 9 am in the city's time zone", () => {
-    // Winter time: Paris is UTC+1, London UTC+0.
-    expect(timetableArrival("Europe/Paris", "2026-11-02").toISOString()).toBe("2026-11-02T08:00:00.000Z");
-    expect(timetableArrival("Europe/London", "2026-11-02").toISOString()).toBe("2026-11-02T09:00:00.000Z");
-    // Summer time.
-    expect(timetableArrival("Europe/Paris", "2026-06-15").toISOString()).toBe("2026-06-15T07:00:00.000Z");
+  it("are the days prepare.sh checks the timetables against", () => {
+    const prepare = read("routing/prepare.sh");
+    for (const [country, day] of Object.entries(TIMETABLE_DAYS)) {
+      expect(prepare).toMatch(new RegExp(`^${country}_DAY=${day}$`, "m"));
+    }
+  });
+
+  it("arrive at 9 am in the city's time zone", () => {
+    // Summer time: Paris is UTC+2, London UTC+1.
+    expect(timetableArrival({ country: "FR", timeZone: "Europe/Paris" }).toISOString()).toBe(
+      "2026-10-15T07:00:00.000Z",
+    );
+    expect(timetableArrival({ country: "GB", timeZone: "Europe/London" }).toISOString()).toBe(
+      "2026-10-19T08:00:00.000Z",
+    );
+    // Winter time.
+    expect(arrivalOn("2026-11-02", "Europe/Paris").toISOString()).toBe("2026-11-02T08:00:00.000Z");
+    expect(arrivalOn("2026-11-02", "Europe/London").toISOString()).toBe("2026-11-02T09:00:00.000Z");
   });
 });
 

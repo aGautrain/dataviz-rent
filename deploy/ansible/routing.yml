@@ -9,8 +9,8 @@
 # runs under memory and CPU caps (docker-compose.yml) so the other projects
 # keep theirs. The first run downloads ~1 GB of OpenStreetMap and timetable
 # data, then imports it mostly in swap. The timetables are pinned to one day
-# (routing/config.yml), so there is nothing to refresh: run it again only to
-# pick up a timetable that was missing or after changing that day.
+# per country (routing/prepare.sh), so there is nothing to refresh: run it
+# again only to pick up a timetable that was missing or a config change.
 # ─────────────────────────────────────────────────────────────────────────────
 - name: Travel times (MOTIS)
   hosts: dataviz
