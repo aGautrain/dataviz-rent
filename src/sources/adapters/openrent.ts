@@ -115,6 +115,10 @@ export const openrent: SourceAdapter<OpenRentRecord> = {
   id: "openrent",
   name: "OpenRent",
   cities: ["london"],
+  // OpenRent's AWS firewall answers datacenter IPs (our VPS) with a "Human
+  // Verification" challenge (HTTP 405), while home connections get the pages.
+  // We don't work around bot protection: alert link only until that changes.
+  collect: false,
 
   async *search(criteria, { fetch }) {
     const pageUrl = searchUrl({ cityId: criteria.cityId });

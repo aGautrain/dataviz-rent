@@ -131,4 +131,9 @@ describe.skipIf(!url)("collection pipeline", () => {
     );
     expect(results.map((r) => r.cityId)).toEqual(["rennes"]);
   });
+
+  it("skips adapters marked as not collected", async () => {
+    const blocked = { ...fakeAdapter([{ id: "a", price: 700 }]), collect: false };
+    expect(await collectAll(db, [blocked], [target], context)).toEqual([]);
+  });
 });

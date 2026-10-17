@@ -18,7 +18,8 @@ function page(list: OnTheMarketProperty[], next: boolean) {
     paginationControls: { next: next ? { "next-link": "/to-rent/property/london/?page=2" } : null },
   };
   const data = { props: { pageProps: { initialReduxState: { results } } } };
-  return `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(data)}</script></body></html>`;
+  // The real tag, as served on 2026-10-17.
+  return `<html><body><script id="__NEXT_DATA__" type="application/json" crossorigin="anonymous">${JSON.stringify(data)}</script></body></html>`;
 }
 
 const properties = (n: number, start = 0) =>
