@@ -108,3 +108,7 @@ export function getCity(id: string): CityConfig | undefined {
 export function citiesOf(country: CountryCode): CityConfig[] {
   return CITIES.filter((city) => city.country === country);
 }
+
+export function isCityId(value: string): value is CityId {
+  return CITIES.some((city) => city.id === value);
+}

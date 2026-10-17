@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, sql, type SQL } from "drizzle-orm";
 import type { CityId } from "@/domain/countries";
 import type { Listing } from "@/domain/listing";
+import type { SearchCriteria } from "@/domain/search";
 import type { Database } from "./client";
 import { listings, type ListingRow, type NewListingRow } from "./schema";
 
@@ -111,5 +112,33 @@ export async function activeListings(db: Database, cityIds: CityId[]): Promise<L
     .select()
     .from(listings)
     .where(and(inArray(listings.cityId, cityIds), isNull(listings.removedAt)));
+  return rows.map(fromRow);
+}
+
+/**
+ * Live listings matching the criteria, newest first. Bedrooms are compared on
+ * the same basis as `effectiveBedrooms`: French "pièces" minus the living room.
+ */
+export async function searchListings(
+  db: Database,
+  criteria: SearchCriteria,
+  limit = 300,
+): Promise<Listing[]> {
+  const bedrooms = sql`coalesce(${listings.bedrooms}, greatest(${listings.rooms} - 1, 0))`;
+  const conditions: SQL[] = [eq(listings.cityId, criteria.cityId), isNull(listings.removedAt)];
+  if (criteria.minRent !== undefined) conditions.push(gte(listings.rentMinor, Math.round(criteria.minRent * 100)));
+  if (criteria.maxRent !== undefined) conditions.push(lte(listings.rentMinor, Math.round(criteria.maxRent * 100)));
+  if (criteria.minBedrooms !== undefined) conditions.push(sql`${bedrooms} >= ${criteria.minBedrooms}`);
+  if (criteria.maxBedrooms !== undefined) conditions.push(sql`${bedrooms} <= ${criteria.maxBedrooms}`);
+  if (criteria.minAreaM2 !== undefined) conditions.push(gte(listings.areaM2, criteria.minAreaM2));
+  if (criteria.maxAreaM2 !== undefined) conditions.push(lte(listings.areaM2, criteria.maxAreaM2));
+  if (criteria.furnished !== undefined) conditions.push(eq(listings.furnished, criteria.furnished));
+
+  const rows = await db
+    .select()
+    .from(listings)
+    .where(and(...conditions))
+    .orderBy(sql`${listings.publishedAt} desc nulls last`, desc(listings.firstSeenAt))
+    .limit(limit);
   return rows.map(fromRow);
 }
