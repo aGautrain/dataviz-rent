@@ -1,0 +1,38 @@
+[
+  {
+    "i": 0,
+    "id": 2856638,
+    "letAgreed": false,
+    "title": "2 Bed Flat, Hanway Place, W1T",
+    "description": "Mid let (1 - 6 months). Bills included. Please quote LNDN - HAN692 when calling in. This property is available from 1 May",
+    "imageUrl": "//imagescdn.openrent.co.uk/listings/2856638/o_1jlp2rmvqoc7aau1p4b69b18nt17.JPG_homepage.JPG",
+    "details": ["2 Beds", "2 Baths", "Furnished"],
+    "distance": 0.0,
+    "commuteTime": 0.0,
+    "rentPerMonth": 5800.0,
+    "rentPerWeek": 1338.46,
+    "lastUpdated": "around 1 month ago",
+    "isNew": false,
+    "isMultiRoom": false,
+    "maxRoomRentPerMonth": 0.0,
+    "maxRoomRentPerWeek": 0.0
+  },
+  {
+    "i": 1,
+    "id": 2879904,
+    "letAgreed": false,
+    "title": "Room in a Shared House, Medway Street, SW1P",
+    "description": "...",
+    "imageUrl": "//imagescdn.openrent.co.uk/listings/2879904/o_1.JPG_homepage.JPG",
+    "details": ["6 Rooms Available", "3 Baths", "Furnished"],
+    "distance": 0.4,
+    "commuteTime": 0.0,
+    "rentPerMonth": 1350.0,
+    "rentPerWeek": 311.54,
+    "lastUpdated": "around 2 days ago",
+    "isNew": true,
+    "isMultiRoom": true,
+    "maxRoomRentPerMonth": 1475.0,
+    "maxRoomRentPerWeek": 340.38
+  }
+]

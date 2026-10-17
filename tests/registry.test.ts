@@ -17,6 +17,7 @@ describe("source registry", () => {
     expect(alertLinks({ cityId: "london", maxRent: 1800 })).toEqual([
       expect.objectContaining({ source: "rightmove", name: "Rightmove" }),
       expect.objectContaining({ source: "onthemarket", name: "OnTheMarket" }),
+      expect.objectContaining({ source: "openrent", name: "OpenRent" }),
     ]);
   });
 
