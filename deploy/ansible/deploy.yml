@@ -61,6 +61,15 @@
       delay: 3
       until: health.status == 200
 
+    # The scheduler collects a minute after it starts, then every 6 hours. Its
+    # container rarely changes, so `up` leaves it running: restart it so new or
+    # changed sites are collected now rather than at the next 6-hour slot.
+    - name: Collect listings with the new code
+      ansible.builtin.command:
+        cmd: docker compose restart scheduler
+        chdir: "{{ app_dir }}"
+      changed_when: true
+
     - name: Remove dangling images left by the rebuild
       ansible.builtin.command: docker image prune -f
       changed_when: false

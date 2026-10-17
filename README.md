@@ -89,7 +89,8 @@ cp production.env.example production.env      # mots de passe Postgres et testeu
 ansible-playbook site.yml                     # Docker, appli, puis site nginx + HTTPS
 ```
 
-Pour les mises à jour suivantes : `ansible-playbook deploy.yml`. Pour ajouter un testeur, modifie
+Pour les mises à jour suivantes : `ansible-playbook deploy.yml`, qui relance aussi une collecte des
+annonces (sinon la prochaine n'a lieu qu'au créneau de 6 h suivant). Pour ajouter un testeur, modifie
 `BETA_USERS` dans `production.env`, puis relance `deploy.yml`.
 
 ### Temps de trajet (MOTIS)
