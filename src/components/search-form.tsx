@@ -1,5 +1,5 @@
 import { CITIES, COUNTRIES, getCity } from "@/domain/countries";
-import type { SearchCriteria } from "@/domain/search";
+import type { CommuteCriteria, SearchCriteria } from "@/domain/search";
 
 const inputClass =
   "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700";
@@ -35,7 +35,13 @@ function NumberField({
  * Submits by GET so every search is a URL testers can bookmark or share.
  * The page keys it by the criteria, so the fields reset when the URL changes.
  */
-export function SearchForm({ criteria }: { criteria: SearchCriteria }) {
+export function SearchForm({
+  criteria,
+  commute,
+}: {
+  criteria: SearchCriteria;
+  commute: CommuteCriteria | null;
+}) {
   const city = getCity(criteria.cityId);
   const currency = city ? COUNTRIES[city.country].currency : "EUR";
   const symbol = currency === "GBP" ? "£" : "€";
@@ -54,6 +60,18 @@ export function SearchForm({ criteria }: { criteria: SearchCriteria }) {
           ))}
         </select>
       </label>
+      <label className="col-span-2 flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400 sm:col-span-3">
+        Adresse de trajet (travail, école…)
+        <input
+          type="text"
+          name="to"
+          defaultValue={commute?.to}
+          placeholder={city?.country === "GB" ? "10 Downing Street" : "8 rue de Rivoli"}
+          autoComplete="street-address"
+          className={inputClass}
+        />
+      </label>
+      <NumberField name="maxMinutes" label="Trajet max (min)" value={commute?.maxMinutes} />
       <NumberField name="minRent" label={`Loyer min (${symbol}/mois)`} value={criteria.minRent} />
       <NumberField name="maxRent" label={`Loyer max (${symbol}/mois)`} value={criteria.maxRent} />
       <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">

@@ -12,6 +12,7 @@ vers une adresse, le prix, le nombre de chambres et la surface. Beta : Paris, Re
 | `src/lib/beta-access.ts` | Accès réservé aux testeurs (authentification HTTP Basic). |
 | `src/proxy.ts` | Applique l'accès beta à toutes les pages, sauf `/api/health`. |
 | `src/sources/` | Collecte des annonces : contrat commun des sites (`types.ts`), pipeline (`collect.ts`), registre (`registry.ts`) et un adaptateur par site dans `adapters/`. |
+| `src/routing/`, `src/geocoding/`, `routing/` | Temps de trajet : client MOTIS, géocodeurs par pays, et la configuration du serveur MOTIS. |
 | `src/app/page.tsx`, `src/components/` | Page de recherche : filtres (dans l'URL, donc partageables), liste, carte MapLibre (fond OpenFreeMap) et liens « Créer une alerte » vers chaque site. |
 | `src/app/api/cron/collect` | Lance une collecte, appelé toutes les 6 h par le conteneur `scheduler`. |
 | `drizzle/` | Migrations SQL. |
@@ -90,6 +91,31 @@ ansible-playbook site.yml                     # Docker, appli, puis site nginx +
 
 Pour les mises à jour suivantes : `ansible-playbook deploy.yml`. Pour ajouter un testeur, modifie
 `BETA_USERS` dans `production.env`, puis relance `deploy.yml`.
+
+### Temps de trajet (MOTIS)
+
+Les temps de trajet porte à porte viennent de [MOTIS](https://github.com/motis-project/motis),
+auto-hébergé dans le même `docker compose` (service `routing`, désactivé par défaut). Il charge les
+rues d'OpenStreetMap et les horaires GTFS d'Île-de-France Mobilités, du STAR et de Londres (Bus Open
+Data Service : bus, métro, DLR, tram). L'appli lui demande en une requête le temps de trajet de
+chaque annonce vers l'adresse saisie, pour une arrivée à 9 h le prochain jour ouvré. Les adresses
+sont géocodées par la Base Adresse Nationale (France) et Nominatim (Royaume-Uni).
+
+L'import demande environ 6 Go de RAM : `routing.yml` refuse de tourner sur un serveur plus petit.
+Pour l'activer :
+
+1. Dans `production.env`, décommenter `COMPOSE_PROFILES=routing` et `MOTIS_URL=http://routing:8080`.
+2. `ansible-playbook deploy.yml`, puis `ansible-playbook routing.yml`. Le premier import prend
+   plusieurs dizaines de minutes. Le playbook installe aussi un rafraîchissement hebdomadaire des
+   horaires (dimanche, 3 h 17).
+
+Sans MOTIS, la recherche fonctionne et signale que les temps de trajet sont indisponibles. Le
+code passe par l'interface `TravelTimeEngine` (`src/routing/`), ce qui permet de changer de
+moteur sans toucher à la recherche. Le job CI `routing` vérifie le client contre la vraie image
+MOTIS, sur un petit réseau de test (`routing/test/make_fixture.py`).
+
+Limite connue : Londres n'a pas encore l'Overground ni l'Elizabeth line, qui viennent des données
+National Rail (compte gratuit nécessaire).
 
 ### Ajouter un autre projet sur le VPS
 

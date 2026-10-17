@@ -4,10 +4,12 @@ import { ListingCard, UI_LOCALE } from "@/components/listing-card";
 import { ListingMap, type MapPoint } from "@/components/listing-map";
 import { SearchForm } from "@/components/search-form";
 import { getDb } from "@/db/client";
-import { searchListings } from "@/db/listings";
 import { CITIES, isCityId } from "@/domain/countries";
-import { parseCriteria } from "@/domain/search";
+import { parseCommute, parseCriteria } from "@/domain/search";
 import { formatMoney } from "@/domain/units";
+import { geocode } from "@/geocoding";
+import { getTravelTimeEngine } from "@/routing";
+import { runSearch, type SearchOutcome } from "@/search/run-search";
 
 const RESULT_LIMIT = 300;
 
@@ -21,13 +23,40 @@ export default function Home({ searchParams }: PageProps<"/">) {
   );
 }
 
+function summary(outcome: SearchOutcome): string {
+  const count = outcome.hits.length;
+  if (count === 0) return "Aucune annonce ne correspond à ces critères.";
+  if (outcome.truncated) {
+    return outcome.destination && !outcome.commuteProblem
+      ? `Les ${count} annonces les plus proches en temps de trajet.`
+      : `Les ${count} annonces les plus récentes.`;
+  }
+  return `${count} annonce${count > 1 ? "s" : ""}.`;
+}
+
+const PROBLEMS = {
+  "address-not-found": "Adresse introuvable : résultats affichés sans temps de trajet.",
+  "geocoding-unavailable":
+    "La recherche d'adresse ne répond pas : résultats affichés sans temps de trajet.",
+  "travel-times-unavailable":
+    "Les temps de trajet sont indisponibles pour le moment : résultats affichés sans ce filtre.",
+} as const;
+
 async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const query = await searchParams;
   const criteria = parseCriteria(query, isCityId);
+  const commute = parseCommute(query);
   const city = CITIES.find((candidate) => candidate.id === criteria.cityId)!;
-  const results = await searchListings(getDb(), criteria, RESULT_LIMIT);
+  const outcome = await runSearch(criteria, commute, city, RESULT_LIMIT, {
+    db: getDb(),
+    geocode,
+    engine: getTravelTimeEngine(),
+    now: () => new Date(),
+    log: console.error,
+  });
+  const showMinutes = outcome.destination !== null && outcome.commuteProblem === null;
 
-  const points: MapPoint[] = results.flatMap((listing, index) =>
+  const points: MapPoint[] = outcome.hits.flatMap(({ listing, minutes }, index) =>
     listing.location
       ? [
           {
@@ -37,6 +66,7 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
             title: listing.title,
             price: formatMoney(listing.rent, UI_LOCALE),
             url: listing.url,
+            minutes,
           },
         ]
       : [],
@@ -50,26 +80,41 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">DatavizRent</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Locations à {city.name}, filtrées par budget, taille et surface.
+            Locations à {city.name}, filtrées par temps de trajet, budget, taille et surface.
           </p>
         </header>
-        <SearchForm key={JSON.stringify(criteria)} criteria={criteria} />
+        <SearchForm key={JSON.stringify([criteria, commute])} criteria={criteria} commute={commute} />
         <AlertLinks criteria={criteria} />
+        {outcome.commuteProblem && (
+          <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            {PROBLEMS[outcome.commuteProblem]}
+          </p>
+        )}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {results.length === 0
-            ? "Aucune annonce ne correspond à ces critères."
-            : results.length === RESULT_LIMIT
-              ? `Les ${RESULT_LIMIT} annonces les plus récentes.`
-              : `${results.length} annonce${results.length > 1 ? "s" : ""}.`}
+          {showMinutes && (
+            <>
+              Trajets en transports vers <strong>{outcome.destination!.label}</strong>, pour une
+              arrivée à 9 h un jour de semaine.{" "}
+            </>
+          )}
+          {summary(outcome)}
         </p>
       </div>
       <div className="h-[50vh] lg:sticky lg:top-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-screen">
-        <ListingMap points={points} bbox={[...city.bbox]} />
+        <ListingMap
+          points={points}
+          bbox={[...city.bbox]}
+          destination={outcome.destination?.location ?? null}
+        />
       </div>
       <ul className="flex flex-col gap-2 p-4 lg:col-start-1 lg:pt-0">
-        {results.map((listing) => (
+        {outcome.hits.map(({ listing, minutes }) => (
           <li key={`${listing.source}:${listing.sourceId}`}>
-            <ListingCard listing={listing} timeZone={city.timeZone} />
+            <ListingCard
+              listing={listing}
+              timeZone={city.timeZone}
+              minutes={showMinutes ? minutes : undefined}
+            />
           </li>
         ))}
       </ul>

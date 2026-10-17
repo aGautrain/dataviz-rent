@@ -49,3 +49,35 @@ jobs:
       - name: Logs on failure
         if: failure()
         run: docker compose logs
+
+  # Loads a tiny synthetic network into the real MOTIS image and checks that
+  # the app's client reads its travel times correctly.
+  routing:
+    runs-on: ubuntu-latest
+    env:
+      MOTIS_IMAGE: ghcr.io/motis-project/motis:2.11.3
+      FIXTURE: routing/test/out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+      - name: Build the fixture network
+        run: |
+          python3 routing/test/make_fixture.py "$FIXTURE"
+          osmium cat "$FIXTURE/town.osm" -o "$FIXTURE/town.osm.pbf"
+      - name: Import it with MOTIS
+        run: docker run --rm -u 0 -v "$PWD/$FIXTURE:/input" -w /input "$MOTIS_IMAGE" /motis import -c config.yml -d data
+      - name: Start MOTIS
+        run: |
+          docker run -d --name motis -u 0 -p 8080:8080 -v "$PWD/$FIXTURE:/input" "$MOTIS_IMAGE" /motis server -d /input/data
+          for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:8080/ && break; sleep 1; done
+      - run: npx vitest run tests/motis-live.test.ts
+        env:
+          MOTIS_TEST_URL: http://127.0.0.1:8080
+      - name: MOTIS logs on failure
+        if: failure()
+        run: docker logs motis || true
