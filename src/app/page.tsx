@@ -86,7 +86,7 @@ async function Search({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">DatavizRent</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Locations à {city.name}, filtrées par temps de trajet, budget, taille et surface.
+            Locations filtrées par temps de trajet, budget, taille et surface.
           </p>
         </header>
         <SearchForm key={JSON.stringify([criteria, commute])} criteria={criteria} commute={commute} />

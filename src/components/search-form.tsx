@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { CITIES, COUNTRIES, getCity } from "@/domain/countries";
 import type { CommuteCriteria, SearchCriteria } from "@/domain/search";
 
@@ -34,6 +37,7 @@ function NumberField({
 /**
  * Submits by GET so every search is a URL testers can bookmark or share.
  * The page keys it by the criteria, so the fields reset when the URL changes.
+ * Picking another city updates the labels at once, before any search.
  */
 export function SearchForm({
   criteria,
@@ -42,7 +46,8 @@ export function SearchForm({
   criteria: SearchCriteria;
   commute: CommuteCriteria | null;
 }) {
-  const city = getCity(criteria.cityId);
+  const [cityId, setCityId] = useState<string>(criteria.cityId);
+  const city = getCity(cityId);
   const currency = city ? COUNTRIES[city.country].currency : "EUR";
   const symbol = currency === "GBP" ? "£" : "€";
   const furnished =
@@ -52,7 +57,12 @@ export function SearchForm({
     <form method="get" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <label className="col-span-2 flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400 sm:col-span-1">
         Ville
-        <select name="city" defaultValue={criteria.cityId} className={inputClass}>
+        <select
+          name="city"
+          value={cityId}
+          onChange={(event) => setCityId(event.target.value)}
+          className={inputClass}
+        >
           {CITIES.map((option) => (
             <option key={option.id} value={option.id}>
               {option.name}
@@ -62,10 +72,12 @@ export function SearchForm({
       </label>
       <label className="col-span-2 flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400 sm:col-span-3">
         Adresse de trajet (travail, école…)
+        {/* An address belongs to one city, so it is cleared when the city changes. */}
         <input
+          key={cityId}
           type="text"
           name="to"
-          defaultValue={commute?.to}
+          defaultValue={cityId === criteria.cityId ? commute?.to : undefined}
           placeholder={city?.country === "GB" ? "10 Downing Street" : "8 rue de Rivoli"}
           autoComplete="street-address"
           className={inputClass}
