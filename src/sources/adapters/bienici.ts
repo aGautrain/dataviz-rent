@@ -1,6 +1,7 @@
 import type { CityId } from "@/domain/countries";
 import type { Listing } from "@/domain/listing";
 import type { SearchCriteria } from "@/domain/search";
+import { furnishedFromText } from "../furnished";
 import { expectOk } from "../http";
 import { SearchTruncated, type SourceAdapter } from "../types";
 
@@ -10,6 +11,7 @@ export interface BieniciAd {
   adType?: string;
   propertyType?: string;
   title?: string;
+  description?: string;
   city?: string;
   postalCode?: string;
   price?: number | number[] | null;
@@ -145,7 +147,7 @@ export const bienici: SourceAdapter<BieniciAd> = {
       areaM2: area,
       bedrooms: ad.bedroomsQuantity ?? null,
       rooms,
-      furnished: ad.isFurnished ?? null,
+      furnished: ad.isFurnished ?? furnishedFromText(ad.title, ad.description),
       location: position ? { lat: position.lat, lng: position.lon } : null,
       // Positions are blurred into a disk; a small one still places the street.
       locationPrecision: position ? (radius <= 150 ? "street" : "area") : null,
