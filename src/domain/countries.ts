@@ -30,6 +30,8 @@ export type BoundingBox = [number, number, number, number];
 export interface CityConfig {
   id: string;
   name: string;
+  /** The city's name in its own country's language, as address geocoders expect it. */
+  localName: string;
   country: CountryCode;
   center: LatLng;
   bbox: BoundingBox;
@@ -68,6 +70,7 @@ export const CITIES = [
   {
     id: "paris",
     name: "Paris",
+    localName: "Paris",
     country: "FR",
     center: { lat: 48.8566, lng: 2.3522 },
     bbox: [2.224, 48.815, 2.47, 48.902],
@@ -76,6 +79,7 @@ export const CITIES = [
   {
     id: "rennes",
     name: "Rennes",
+    localName: "Rennes",
     country: "FR",
     center: { lat: 48.1173, lng: -1.6778 },
     bbox: [-1.753, 48.077, -1.624, 48.155],
@@ -84,6 +88,7 @@ export const CITIES = [
   {
     id: "london",
     name: "Londres",
+    localName: "London",
     country: "GB",
     center: { lat: 51.5072, lng: -0.1276 },
     bbox: [-0.51, 51.286, 0.334, 51.692],
