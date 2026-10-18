@@ -2,6 +2,7 @@ import type { CityId } from "@/domain/countries";
 import type { Listing } from "@/domain/listing";
 import type { SearchCriteria } from "@/domain/search";
 import { weeklyToMonthly } from "@/domain/units";
+import { furnishedFromText } from "../furnished";
 import { expectOk } from "../http";
 import type { SourceAdapter } from "../types";
 
@@ -19,6 +20,8 @@ export interface OnTheMarketProperty {
   location?: { lat: number; lon: number } | null;
   images?: { default?: string }[];
   "cover-image"?: { default?: string } | null;
+  /** Key points from the agent, e.g. "Furnished". */
+  features?: string[];
 }
 
 interface SearchResults {
@@ -115,7 +118,7 @@ export const onthemarket: SourceAdapter<OnTheMarketProperty> = {
       areaM2: null,
       bedrooms: property.bedrooms ?? null,
       rooms: null,
-      furnished: null,
+      furnished: furnishedFromText(property["property-title"], ...(property.features ?? [])),
       location: location ? { lat: location.lat, lng: location.lon } : null,
       locationPrecision: location ? "street" : null,
       address: property.address ?? null,

@@ -2,6 +2,7 @@ import type { CityId } from "@/domain/countries";
 import type { Listing } from "@/domain/listing";
 import type { SearchCriteria } from "@/domain/search";
 import { toSquareMeters, weeklyToMonthly } from "@/domain/units";
+import { furnishedFromText } from "../furnished";
 import { expectOk } from "../http";
 import { SearchTruncated, type SourceAdapter } from "../types";
 
@@ -14,6 +15,8 @@ export interface RightmoveProperty {
   price?: { amount?: number; frequency?: string; currencyCode?: string } | null;
   displaySize?: string | null;
   propertyTypeFullDescription?: string;
+  /** The first lines of the agent's description. */
+  summary?: string;
   propertySubType?: string | null;
   propertyImages?: { mainImageSrc?: string } | null;
   firstVisibleDate?: string | null;
@@ -143,7 +146,7 @@ export const rightmove: SourceAdapter<RightmoveProperty> = {
       areaM2: parseDisplaySize(property.displaySize),
       bedrooms: property.bedrooms ?? null,
       rooms: null,
-      furnished: null,
+      furnished: furnishedFromText(property.summary, property.propertyTypeFullDescription),
       location: location ? { lat: location.latitude, lng: location.longitude } : null,
       locationPrecision: location ? "street" : null,
       address: property.displayAddress ?? null,

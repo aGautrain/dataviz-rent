@@ -65,6 +65,12 @@ describe("Rightmove adapter", () => {
     expect(rightmove.normalize({ ...base, price: null }, london)).toBeNull();
   });
 
+  it("reads furnished or unfurnished from the summary", () => {
+    const base = property as RightmoveProperty;
+    expect(rightmove.normalize({ ...base, summary: "Furnished one bedroom flat" }, london)?.furnished).toBe(true);
+    expect(rightmove.normalize({ ...base, summary: "Unfurnished. Available now" }, london)?.furnished).toBe(false);
+  });
+
   it("parses sizes in either unit", () => {
     expect(parseDisplaySize("1,076 sq. ft.")).toBeCloseTo(99.96, 1);
     expect(parseDisplaySize("45 sq. m.")).toBe(45);

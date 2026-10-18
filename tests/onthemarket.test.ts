@@ -61,6 +61,11 @@ describe("OnTheMarket adapter", () => {
     expect(monthlyRentMinor(undefined)).toBeNull();
   });
 
+  it("reads furnished or unfurnished from the agent's key points", () => {
+    expect(onthemarket.normalize({ ...base, features: ["Unfurnished", "Garden"] }, london)?.furnished).toBe(false);
+    expect(onthemarket.normalize({ ...base, features: ["Furnished"] }, london)?.furnished).toBe(true);
+  });
+
   it("skips adverts and listings without a price", () => {
     const ad = { id: "x", "ad?": true, title: "Moving soon?" } as OnTheMarketProperty;
     expect(onthemarket.normalize(ad, london)).toBeNull();
